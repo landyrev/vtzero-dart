@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - vtzero_dart (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - vtzero_dart (from `.symlinks/plugins/vtzero_dart/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  vtzero_dart:
+    :path: ".symlinks/plugins/vtzero_dart/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  vtzero_dart: a875c5ecdd38724e764e79ffd87c24ff836eec02
+
+PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
+
+COCOAPODS: 1.16.2

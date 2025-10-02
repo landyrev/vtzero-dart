@@ -1,0 +1,6 @@
+[submodule "third_party/vtzero"]
+	path = third_party/vtzero
+	url = https://github.com/mapbox/vtzero.git
+[submodule "third_party/protozero"]
+	path = third_party/protozero
+	url = https://github.com/mapbox/protozero.git
