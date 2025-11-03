@@ -8,8 +8,6 @@ import 'package:vector_tile/vector_tile.dart' as vt;
 import 'package:vector_tile/util/geometry.dart' as geom;
 import 'package:vector_tile/util/geojson.dart' as geo;
 import 'src/vtz_tile.dart';
-import 'src/vtz_layer.dart';
-import 'src/vtz_feature.dart';
 import 'src/vtz_geometry_type.dart';
 
 /// Fast VectorTileFeature that uses native toGeoJson
@@ -19,26 +17,18 @@ class VectorTileFeatureVtzero extends vt.VectorTileFeature {
   final VtzGeometryType _geometryTypeVtz;
 
   VectorTileFeatureVtzero({
-    required List<List<List<double>>> Function(int x, int y, int z) geometryDecoder,
+    required List<List<List<double>>> Function(int x, int y, int z)
+    geometryDecoder,
     required VtzGeometryType geometryTypeVtz,
-    required int extent,
-    required Int64 id,
-    required List<int> tags,
-    required vt.VectorTileGeomType? type,
-    required List<int>? geometryList,
-    required List<String>? keys,
-    required List<vt.VectorTileValue>? values,
-  })  : _geometryDecoder = geometryDecoder,
-        _geometryTypeVtz = geometryTypeVtz,
-        super(
-          id: id,
-          tags: tags,
-          type: type,
-          geometryList: geometryList,
-          extent: extent,
-          keys: keys,
-          values: values,
-        );
+    required int super.extent,
+    required super.id,
+    required super.tags,
+    required super.type,
+    required super.geometryList,
+    required super.keys,
+    required super.values,
+  }) : _geometryDecoder = geometryDecoder,
+       _geometryTypeVtz = geometryTypeVtz;
 
   /// Optimized toGeoJson using native code
   @override
@@ -56,7 +46,8 @@ class VectorTileFeatureVtzero extends vt.VectorTileFeature {
       for (int i = 0; i < tags.length; i += 2) {
         final keyIndex = tags[i];
         final valueIndex = tags[i + 1];
-        if (keys != null && values != null &&
+        if (keys != null &&
+            values != null &&
             keyIndex < keys!.length &&
             valueIndex < values!.length) {
           properties![keys![keyIndex]] = values![valueIndex];
@@ -72,30 +63,34 @@ class VectorTileFeatureVtzero extends vt.VectorTileFeature {
         }
         final point = coords.first.first;
         return geo.GeoJsonPoint(
-          geometry: geom.GeometryPoint(coordinates: point),
-          properties: properties,
-        ) as T;
+              geometry: geom.GeometryPoint(coordinates: point),
+              properties: properties,
+            )
+            as T;
 
       case VtzGeometryType.linestring:
         if (coords.isEmpty) return null;
         if (coords.length == 1) {
           return geo.GeoJsonLineString(
-            geometry: geom.GeometryLineString(coordinates: coords.first),
-            properties: properties,
-          ) as T;
+                geometry: geom.GeometryLineString(coordinates: coords.first),
+                properties: properties,
+              )
+              as T;
         } else {
           return geo.GeoJsonMultiLineString(
-            geometry: geom.GeometryMultiLineString(coordinates: coords),
-            properties: properties,
-          ) as T;
+                geometry: geom.GeometryMultiLineString(coordinates: coords),
+                properties: properties,
+              )
+              as T;
         }
 
       case VtzGeometryType.polygon:
         if (coords.isEmpty) return null;
         return geo.GeoJsonPolygon(
-          geometry: geom.GeometryPolygon(coordinates: coords),
-          properties: properties,
-        ) as T;
+              geometry: geom.GeometryPolygon(coordinates: coords),
+              properties: properties,
+            )
+            as T;
 
       default:
         return null;
@@ -181,34 +176,38 @@ class VectorTileVtzero extends vt.VectorTile {
           final geomType = vtzFeature.geometryType;
 
           // Create optimized feature with geometry decoder closure
-          features.add(VectorTileFeatureVtzero(
-            geometryDecoder: (int x, int y, int z) {
-              return vtzFeature.toGeoJson(
-                extent: layerExtent,
-                tileX: x,
-                tileY: y,
-                tileZ: z,
-              );
-            },
-            geometryTypeVtz: geomType,
-            extent: vtzLayer.extent,
-            id: vtzFeature.id != null ? Int64(vtzFeature.id!) : Int64.ZERO,
-            tags: tags,
-            type: vtType,
-            geometryList: [], // Not needed - we use native toGeoJson
-            keys: keys,
-            values: values,
-          ));
+          features.add(
+            VectorTileFeatureVtzero(
+              geometryDecoder: (int x, int y, int z) {
+                return vtzFeature.toGeoJson(
+                  extent: layerExtent,
+                  tileX: x,
+                  tileY: y,
+                  tileZ: z,
+                );
+              },
+              geometryTypeVtz: geomType,
+              extent: vtzLayer.extent,
+              id: vtzFeature.id != null ? Int64(vtzFeature.id!) : Int64.ZERO,
+              tags: tags,
+              type: vtType,
+              geometryList: [], // Not needed - we use native toGeoJson
+              keys: keys,
+              values: values,
+            ),
+          );
         }
 
-        layers.add(VectorTileLayerVtzero(
-          name: vtzLayer.name,
-          extent: vtzLayer.extent,
-          version: vtzLayer.version,
-          keys: keys,
-          values: values,
-          features: features,
-        ));
+        layers.add(
+          VectorTileLayerVtzero(
+            name: vtzLayer.name,
+            extent: vtzLayer.extent,
+            version: vtzLayer.version,
+            keys: keys,
+            values: values,
+            features: features,
+          ),
+        );
 
         // DON'T dispose features or layers - they're kept alive via closures
         // vtzLayer.dispose();
@@ -256,4 +255,3 @@ bool _valuesEqual(vt.VectorTileValue a, vt.VectorTileValue b) {
   }
   return false;
 }
-

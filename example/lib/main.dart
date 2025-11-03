@@ -74,7 +74,9 @@ class _MyAppState extends State<MyApp> {
             buffer.writeln('    Geometry:');
             buffer.writeln('      ${geometry.length} ring(s)/line(s)');
             if (geometry.first.isNotEmpty) {
-              buffer.writeln('      First ring: ${geometry.first.length} points');
+              buffer.writeln(
+                '      First ring: ${geometry.first.length} points',
+              );
               if (geometry.first.length <= 3) {
                 // Show coordinates for small geometries
                 for (final point in geometry.first) {
@@ -121,9 +123,12 @@ class _MyAppState extends State<MyApp> {
             if (geoJson.geometry is geom.GeometryPolygon) {
               final poly = geoJson.geometry as geom.GeometryPolygon;
               buffer.writeln('Rings: ${poly.coordinates.length}');
-              if (poly.coordinates.isNotEmpty && poly.coordinates.first.isNotEmpty) {
+              if (poly.coordinates.isNotEmpty &&
+                  poly.coordinates.first.isNotEmpty) {
                 final firstPoint = poly.coordinates.first.first;
-                buffer.writeln('First point: [${firstPoint[0]}, ${firstPoint[1]}]');
+                buffer.writeln(
+                  'First point: [${firstPoint[0]}, ${firstPoint[1]}]',
+                );
               }
             }
           }
@@ -145,9 +150,7 @@ class _MyAppState extends State<MyApp> {
     const textStyle = TextStyle(fontSize: 14, fontFamily: 'monospace');
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('vtzero_dart Example'),
-        ),
+        appBar: AppBar(title: const Text('vtzero_dart Example')),
         body: SingleChildScrollView(
           child: Container(
             padding: const EdgeInsets.all(20),
@@ -159,10 +162,7 @@ class _MyAppState extends State<MyApp> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  tileInfo,
-                  style: textStyle,
-                ),
+                Text(tileInfo, style: textStyle),
               ],
             ),
           ),
