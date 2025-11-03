@@ -1,92 +1,344 @@
 # vtzero_dart
 
-A new Flutter FFI plugin project.
+A Dart/Flutter FFI wrapper around the [vtzero](https://github.com/mapbox/vtzero) C++ library for decoding Mapbox Vector Tiles (MVT).
 
-## Getting Started
+## Overview
 
-This project is a starting point for a Flutter
-[FFI plugin](https://flutter.dev/to/ffi-package),
-a specialized package that includes native code directly invoked with Dart FFI.
+`vtzero_dart` provides Dart bindings to the vtzero C++ library, a minimalist and efficient implementation of the [Mapbox Vector Tile Specification 2.x](https://www.mapbox.com/vector-tiles/specification). This enables decoding vector tile data directly in Dart/Flutter applications using native code.
 
-## Project structure
+## Features
 
-This template uses the following structure:
+- **Native Performance**: Direct FFI bindings to C++ for tile decoding
+- **Cross-Platform**: Supports Android (API 24+) and iOS (13.0+)
+- **Minimal Dependencies**: Leverages the lightweight vtzero library
+- **Two API Styles**:
+  - **Core API**: Direct vtzero interface with manual memory management
+  - **Adapter API**: Drop-in replacement for the `vector_tile` package with native-accelerated `toGeoJson()`
+- **Full Tile Access**: Iterate through layers, features, properties, and geometry
+- **GeoJSON Support**: Convert features to GeoJSON coordinates with proper Web Mercator projection
 
-* `src`: Contains the native source code, and a CmakeFile.txt file for building
-  that source code into a dynamic library.
+## Installation
 
-* `lib`: Contains the Dart code that defines the API of the plugin, and which
-  calls into the native code using `dart:ffi`.
-
-* platform folders (`android`, `ios`, `windows`, etc.): Contains the build files
-  for building and bundling the native code library with the platform application.
-
-## Building and bundling native code
-
-The `pubspec.yaml` specifies FFI plugins as follows:
+Add this to your package's `pubspec.yaml` file:
 
 ```yaml
-  plugin:
-    platforms:
-      some_platform:
-        ffiPlugin: true
+dependencies:
+  vtzero_dart: ^0.0.1
 ```
 
-This configuration invokes the native build for the various target platforms
-and bundles the binaries in Flutter applications using these FFI plugins.
+Then run:
 
-This can be combined with dartPluginClass, such as when FFI is used for the
-implementation of one platform in a federated plugin:
-
-```yaml
-  plugin:
-    implements: some_other_plugin
-    platforms:
-      some_platform:
-        dartPluginClass: SomeClass
-        ffiPlugin: true
+```bash
+flutter pub get
 ```
 
-A plugin can have both FFI and method channels:
+## Usage
 
-```yaml
-  plugin:
-    platforms:
-      some_platform:
-        pluginClass: SomeName
-        ffiPlugin: true
+### Core API (No External Dependencies)
+
+The core API provides direct access to vtzero functionality:
+
+```dart
+import 'package:vtzero_dart/vtzero_dart.dart';
+
+// Load tile bytes
+final Uint8List tileBytes = ...; // from network, file, etc.
+
+// Decode tile
+final tile = VtzTile.fromBytes(tileBytes);
+
+// Iterate through layers
+final layers = tile.getLayers();
+for (final layer in layers) {
+  print('Layer: ${layer.name}');
+  print('Extent: ${layer.extent}');
+  print('Version: ${layer.version}');
+
+  // Get features
+  final features = layer.getFeatures();
+  for (final feature in features) {
+    print('Geometry type: ${feature.geometryType}');
+
+    // Access properties
+    final properties = feature.getProperties();
+    properties.forEach((key, value) {
+      print('  $key: $value');
+    });
+
+    // Decode geometry to tile coordinates
+    final geometry = feature.decodeGeometry();
+    // geometry is List<List<List<int>>> - rings/lines of [x,y] points
+
+    // Or convert directly to GeoJSON coordinates (Web Mercator)
+    final geoJsonCoords = feature.toGeoJson(
+      extent: layer.extent,
+      tileX: 0,
+      tileY: 0,
+      tileZ: 0,
+    );
+
+    // Clean up
+    feature.dispose();
+  }
+
+  layer.dispose();
+}
+
+tile.dispose();
 ```
 
-The native build systems that are invoked by FFI (and method channel) plugins are:
+### Adapter API (vector_tile Compatibility)
 
-* For Android: Gradle, which invokes the Android NDK for native builds.
-  * See the documentation in android/build.gradle.
-* For iOS and MacOS: Xcode, via CocoaPods.
-  * See the documentation in ios/vtzero_dart.podspec.
-  * See the documentation in macos/vtzero_dart.podspec.
-* For Linux and Windows: CMake.
-  * See the documentation in linux/CMakeLists.txt.
-  * See the documentation in windows/CMakeLists.txt.
+Use `vtzero_dart` as a drop-in replacement for the `vector_tile` package with native-accelerated GeoJSON conversion:
 
-## Binding to native code
+```dart
+import 'package:vtzero_dart/vector_tile_adapter.dart';
+import 'package:vector_tile/util/geojson.dart' as geo;
 
-To use the native code, bindings in Dart are needed.
-To avoid writing these by hand, they are generated from the header file
-(`src/vtzero_dart.h`) by `package:ffigen`.
-Regenerate the bindings by running `dart run ffigen --config ffigen.yaml`.
+// Create VectorTile using vtzero backend
+final vectorTile = VectorTileVtzero.fromBytes(bytes: tileBytes);
 
-## Invoking native code
+// Use familiar vector_tile API
+for (final layer in vectorTile.layers) {
+  print('Layer: ${layer.name}');
 
-Very short-running native functions can be directly invoked from any isolate.
-For example, see `sum` in `lib/vtzero_dart.dart`.
+  for (final feature in layer.features) {
+    // This calls native optimized toGeoJson!
+    final geoJson = feature.toGeoJson(x: 0, y: 0, z: 0);
 
-Longer-running functions should be invoked on a helper isolate to avoid
-dropping frames in Flutter applications.
-For example, see `sumAsync` in `lib/vtzero_dart.dart`.
+    if (geoJson != null) {
+      print('Type: ${geoJson.geometry?.type}');
+      // Work with GeoJSON as usual...
+    }
+  }
+}
+```
 
-## Flutter help
+## API Reference
 
-For help getting started with Flutter, view our
-[online documentation](https://docs.flutter.dev), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Core Classes
+
+#### `VtzTile`
+
+Represents a decoded vector tile.
+
+- `VtzTile.fromBytes(Uint8List bytes)` - Decode a tile from raw bytes
+- `List<VtzLayer> getLayers()` - Get all layers in the tile
+- `VtzLayer? getLayer(String name)` - Get a layer by name
+- `void dispose()` - Free native resources
+
+#### `VtzLayer`
+
+Represents a layer within a tile.
+
+- `String name` - Layer name
+- `int extent` - Tile extent (typically 4096)
+- `int version` - MVT version (typically 2)
+- `List<VtzFeature> getFeatures()` - Get all features in the layer
+- `void dispose()` - Free native resources
+
+#### `VtzFeature`
+
+Represents a feature within a layer.
+
+- `VtzGeometryType geometryType` - Geometry type (point, linestring, polygon, unknown)
+- `int? id` - Optional feature ID
+- `Map<String, dynamic> getProperties()` - Decode feature properties
+- `List<List<List<int>>> decodeGeometry()` - Decode geometry to tile coordinates
+- `List<List<List<double>>> toGeoJson({required int extent, required int tileX, required int tileY, required int tileZ})` - Convert to GeoJSON coordinates (Web Mercator projection)
+- `void dispose()` - Free native resources
+
+#### `VtzGeometryType`
+
+Enum for geometry types:
+- `VtzGeometryType.unknown`
+- `VtzGeometryType.point`
+- `VtzGeometryType.linestring`
+- `VtzGeometryType.polygon`
+
+### Adapter Classes
+
+#### `VectorTileVtzero`
+
+Drop-in replacement for `VectorTile` from the `vector_tile` package.
+
+- `VectorTileVtzero.fromBytes({required Uint8List bytes})` - Create from bytes using vtzero decoder
+- `List<VectorTileLayer> layers` - Access layers
+
+#### `VectorTileFeatureVtzero`
+
+Extends `VectorTileFeature` with native-accelerated `toGeoJson()`.
+
+## Memory Management
+
+The core API requires manual memory management. Always call `dispose()` on tiles, layers, and features when done:
+
+```dart
+// Good practice
+final tile = VtzTile.fromBytes(bytes);
+try {
+  final layers = tile.getLayers();
+  for (final layer in layers) {
+    try {
+      final features = layer.getFeatures();
+      for (final feature in features) {
+        try {
+          // Use feature...
+        } finally {
+          feature.dispose();
+        }
+      }
+    } finally {
+      layer.dispose();
+    }
+  }
+} finally {
+  tile.dispose();
+}
+```
+
+The adapter API handles memory management internally through closures, but native objects remain in memory until the `VectorTileVtzero` instance is garbage collected.
+
+## Platform Support
+
+- **Android**: API level 24+ (Android 7.0+)
+- **iOS**: 13.0+
+- **Architecture**: ARM64, ARMv7 (Android), x86_64 simulators
+
+## Building from Source
+
+### Prerequisites
+
+- Flutter SDK
+- C++14 compatible compiler
+- CMake 3.10+
+- Git (for submodules)
+
+### Setup
+
+```bash
+# Clone with submodules
+git clone --recursive https://github.com/yourusername/vtzero_dart.git
+cd vtzero_dart
+
+# Or if already cloned, initialize submodules
+git submodule update --init --recursive
+
+# Get Dart dependencies
+flutter pub get
+
+# Regenerate FFI bindings (if needed)
+dart run ffigen --config ffigen.yaml
+```
+
+### Build Native Code
+
+#### iOS
+```bash
+cd example
+flutter build ios
+```
+
+#### Android
+```bash
+cd example
+flutter build apk
+```
+
+## Example App
+
+See the [example](example/) directory for a complete Flutter app demonstrating usage:
+
+```bash
+cd example
+flutter run
+```
+
+The example app loads a sample vector tile and displays information about its layers, features, and geometry.
+
+## Dependencies
+
+- [ffi](https://pub.dev/packages/ffi) - Dart FFI utilities
+- [fixnum](https://pub.dev/packages/fixnum) - Fixed-width integers
+- [vector_tile](https://pub.dev/packages/vector_tile) - For adapter API compatibility
+
+### Native Dependencies (included as submodules)
+
+- [vtzero](https://github.com/mapbox/vtzero) - Vector tile decoder (BSD-2-Clause)
+- [protozero](https://github.com/mapbox/protozero) - Protobuf decoder (BSD-2-Clause)
+
+## Architecture
+
+```
+┌─────────────────────────────────────┐
+│         Dart Application            │
+├─────────────────────────────────────┤
+│  vtzero_dart API (Core or Adapter)  │
+├─────────────────────────────────────┤
+│         Dart FFI Bindings           │
+├─────────────────────────────────────┤
+│      C++ Wrapper (vtzero_dart.h)    │
+├─────────────────────────────────────┤
+│     vtzero C++ Library (header-only)│
+├─────────────────────────────────────┤
+│    protozero C++ Library (header-only)│
+└─────────────────────────────────────┘
+```
+
+The library consists of:
+1. **C++ wrapper** (`src/vtzero_wrapper.cpp`) - Provides C-compatible FFI interface
+2. **FFI bindings** (`lib/vtzero_dart_bindings_generated.dart`) - Auto-generated with ffigen
+3. **Dart wrapper** (`lib/src/`) - Provides idiomatic Dart API
+4. **Adapter layer** (`lib/vector_tile_adapter.dart`) - Optional compatibility with vector_tile package
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+### Third-Party Licenses
+
+This project includes the following third-party components:
+
+- **vtzero** - Copyright (c) 2017, Mapbox (BSD-2-Clause License)
+- **protozero** - Copyright (c) 2022, Mapbox (BSD-3-Clause License)
+
+See [third_party/](third_party/) directory for complete license texts.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Troubleshooting
+
+### iOS Build Issues
+
+If you encounter build errors on iOS:
+
+```bash
+cd example/ios
+pod install
+```
+
+### Android Build Issues
+
+Ensure you have NDK installed and `ndkVersion` is set in your app's `build.gradle`.
+
+### Binding Generation
+
+If FFI bindings are out of sync:
+
+```bash
+dart run ffigen --config ffigen.yaml
+```
+
+## Acknowledgments
+
+- [Mapbox](https://www.mapbox.com/) for the vtzero and protozero libraries
+- The Mapbox Vector Tile specification maintainers
+
+## See Also
+
+- [vtzero C++ library](https://github.com/mapbox/vtzero)
+- [Mapbox Vector Tile Specification](https://github.com/mapbox/vector-tile-spec)
+- [vector_tile package](https://pub.dev/packages/vector_tile)
 
