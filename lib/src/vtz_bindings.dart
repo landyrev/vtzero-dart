@@ -1,6 +1,8 @@
 import 'dart:ffi';
 import 'dart:io';
+import 'package:ffi/ffi.dart';
 import '../vtzero_dart_bindings_generated.dart';
+import 'vtz_exceptions.dart';
 
 const String _libName = 'vtzero_dart';
 
@@ -47,3 +49,34 @@ final DynamicLibrary _dylib = () {
 
 /// The bindings to the native vtzero functions.
 final VtzeroDartBindings bindings = VtzeroDartBindings(_dylib);
+
+/// Check for exceptions and throw appropriate Dart exception if one occurred
+void checkException() {
+  final exceptionType = VtzExceptionType.fromInt(bindings.vtz_get_last_exception_type());
+  if (exceptionType == VtzExceptionType.none) {
+    return;
+  }
+
+  final messagePtr = bindings.vtz_get_last_exception_message();
+  String message = '';
+  if (messagePtr != nullptr) {
+    message = messagePtr.cast<Utf8>().toDartString();
+  }
+
+  bindings.vtz_clear_exception();
+
+  switch (exceptionType) {
+    case VtzExceptionType.format:
+      throw VtzFormatException(message);
+    case VtzExceptionType.geometry:
+      throw VtzGeometryException(message);
+    case VtzExceptionType.type:
+      throw VtzTypeException();
+    case VtzExceptionType.version:
+      throw VtzVersionException(message);
+    case VtzExceptionType.outOfRange:
+      throw VtzOutOfRangeException(message);
+    case VtzExceptionType.none:
+      break;
+  }
+}

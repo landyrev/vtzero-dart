@@ -165,6 +165,163 @@ class VtzeroDartBindings {
         ffi.Pointer<VtzFeatureHandle> Function(ffi.Pointer<VtzLayerHandle>)
       >();
 
+  /// Value table operations
+  int vtz_layer_value_table_size(ffi.Pointer<VtzLayerHandle> layer_handle) {
+    return _vtz_layer_value_table_size(layer_handle);
+  }
+
+  late final _vtz_layer_value_table_sizePtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Size Function(ffi.Pointer<VtzLayerHandle>)>
+      >('vtz_layer_value_table_size');
+  late final _vtz_layer_value_table_size = _vtz_layer_value_table_sizePtr
+      .asFunction<int Function(ffi.Pointer<VtzLayerHandle>)>();
+
+  ffi.Pointer<VtzPropertyValueHandle> vtz_layer_value(
+    ffi.Pointer<VtzLayerHandle> layer_handle,
+    int index,
+  ) {
+    return _vtz_layer_value(layer_handle, index);
+  }
+
+  late final _vtz_layer_valuePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<VtzPropertyValueHandle> Function(
+            ffi.Pointer<VtzLayerHandle>,
+            ffi.Uint32,
+          )
+        >
+      >('vtz_layer_value');
+  late final _vtz_layer_value = _vtz_layer_valuePtr
+      .asFunction<
+        ffi.Pointer<VtzPropertyValueHandle> Function(
+          ffi.Pointer<VtzLayerHandle>,
+          int,
+        )
+      >();
+
+  void vtz_property_value_free(ffi.Pointer<VtzPropertyValueHandle> handle) {
+    return _vtz_property_value_free(handle);
+  }
+
+  late final _vtz_property_value_freePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<VtzPropertyValueHandle>)
+        >
+      >('vtz_property_value_free');
+  late final _vtz_property_value_free = _vtz_property_value_freePtr
+      .asFunction<void Function(ffi.Pointer<VtzPropertyValueHandle>)>();
+
+  int vtz_property_value_type(ffi.Pointer<VtzPropertyValueHandle> handle) {
+    return _vtz_property_value_type(handle);
+  }
+
+  late final _vtz_property_value_typePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Int32 Function(ffi.Pointer<VtzPropertyValueHandle>)
+        >
+      >('vtz_property_value_type');
+  late final _vtz_property_value_type = _vtz_property_value_typePtr
+      .asFunction<int Function(ffi.Pointer<VtzPropertyValueHandle>)>();
+
+  ffi.Pointer<ffi.Char> vtz_property_value_string(
+    ffi.Pointer<VtzPropertyValueHandle> handle,
+  ) {
+    return _vtz_property_value_string(handle);
+  }
+
+  late final _vtz_property_value_stringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<VtzPropertyValueHandle>)
+        >
+      >('vtz_property_value_string');
+  late final _vtz_property_value_string = _vtz_property_value_stringPtr
+      .asFunction<
+        ffi.Pointer<ffi.Char> Function(ffi.Pointer<VtzPropertyValueHandle>)
+      >();
+
+  double vtz_property_value_float(ffi.Pointer<VtzPropertyValueHandle> handle) {
+    return _vtz_property_value_float(handle);
+  }
+
+  late final _vtz_property_value_floatPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Float Function(ffi.Pointer<VtzPropertyValueHandle>)
+        >
+      >('vtz_property_value_float');
+  late final _vtz_property_value_float = _vtz_property_value_floatPtr
+      .asFunction<double Function(ffi.Pointer<VtzPropertyValueHandle>)>();
+
+  double vtz_property_value_double(ffi.Pointer<VtzPropertyValueHandle> handle) {
+    return _vtz_property_value_double(handle);
+  }
+
+  late final _vtz_property_value_doublePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Double Function(ffi.Pointer<VtzPropertyValueHandle>)
+        >
+      >('vtz_property_value_double');
+  late final _vtz_property_value_double = _vtz_property_value_doublePtr
+      .asFunction<double Function(ffi.Pointer<VtzPropertyValueHandle>)>();
+
+  int vtz_property_value_int(ffi.Pointer<VtzPropertyValueHandle> handle) {
+    return _vtz_property_value_int(handle);
+  }
+
+  late final _vtz_property_value_intPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Int64 Function(ffi.Pointer<VtzPropertyValueHandle>)
+        >
+      >('vtz_property_value_int');
+  late final _vtz_property_value_int = _vtz_property_value_intPtr
+      .asFunction<int Function(ffi.Pointer<VtzPropertyValueHandle>)>();
+
+  int vtz_property_value_uint(ffi.Pointer<VtzPropertyValueHandle> handle) {
+    return _vtz_property_value_uint(handle);
+  }
+
+  late final _vtz_property_value_uintPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Uint64 Function(ffi.Pointer<VtzPropertyValueHandle>)
+        >
+      >('vtz_property_value_uint');
+  late final _vtz_property_value_uint = _vtz_property_value_uintPtr
+      .asFunction<int Function(ffi.Pointer<VtzPropertyValueHandle>)>();
+
+  int vtz_property_value_sint(ffi.Pointer<VtzPropertyValueHandle> handle) {
+    return _vtz_property_value_sint(handle);
+  }
+
+  late final _vtz_property_value_sintPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Int64 Function(ffi.Pointer<VtzPropertyValueHandle>)
+        >
+      >('vtz_property_value_sint');
+  late final _vtz_property_value_sint = _vtz_property_value_sintPtr
+      .asFunction<int Function(ffi.Pointer<VtzPropertyValueHandle>)>();
+
+  bool vtz_property_value_bool(ffi.Pointer<VtzPropertyValueHandle> handle) {
+    return _vtz_property_value_bool(handle);
+  }
+
+  late final _vtz_property_value_boolPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Bool Function(ffi.Pointer<VtzPropertyValueHandle>)
+        >
+      >('vtz_property_value_bool');
+  late final _vtz_property_value_bool = _vtz_property_value_boolPtr
+      .asFunction<bool Function(ffi.Pointer<VtzPropertyValueHandle>)>();
+
   /// Feature operations
   void vtz_feature_free(ffi.Pointer<VtzFeatureHandle> handle) {
     return _vtz_feature_free(handle);
@@ -236,6 +393,69 @@ class VtzeroDartBindings {
           ffi.Pointer<ffi.Void>,
         )
       >();
+
+  VtzPropertyIndexPair vtz_feature_next_property_indexes(
+    ffi.Pointer<VtzFeatureHandle> feature_handle,
+  ) {
+    return _vtz_feature_next_property_indexes(feature_handle);
+  }
+
+  late final _vtz_feature_next_property_indexesPtr =
+      _lookup<
+        ffi.NativeFunction<
+          VtzPropertyIndexPair Function(ffi.Pointer<VtzFeatureHandle>)
+        >
+      >('vtz_feature_next_property_indexes');
+  late final _vtz_feature_next_property_indexes =
+      _vtz_feature_next_property_indexesPtr
+          .asFunction<
+            VtzPropertyIndexPair Function(ffi.Pointer<VtzFeatureHandle>)
+          >();
+
+  void vtz_feature_reset_property(
+    ffi.Pointer<VtzFeatureHandle> feature_handle,
+  ) {
+    return _vtz_feature_reset_property(feature_handle);
+  }
+
+  late final _vtz_feature_reset_propertyPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<VtzFeatureHandle>)>
+      >('vtz_feature_reset_property');
+  late final _vtz_feature_reset_property = _vtz_feature_reset_propertyPtr
+      .asFunction<void Function(ffi.Pointer<VtzFeatureHandle>)>();
+
+  bool vtz_feature_for_each_property_indexes(
+    ffi.Pointer<VtzFeatureHandle> feature_handle,
+    PropertyIndexCallback callback,
+    ffi.Pointer<ffi.Void> user_data,
+  ) {
+    return _vtz_feature_for_each_property_indexes(
+      feature_handle,
+      callback,
+      user_data,
+    );
+  }
+
+  late final _vtz_feature_for_each_property_indexesPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Bool Function(
+            ffi.Pointer<VtzFeatureHandle>,
+            PropertyIndexCallback,
+            ffi.Pointer<ffi.Void>,
+          )
+        >
+      >('vtz_feature_for_each_property_indexes');
+  late final _vtz_feature_for_each_property_indexes =
+      _vtz_feature_for_each_property_indexesPtr
+          .asFunction<
+            bool Function(
+              ffi.Pointer<VtzFeatureHandle>,
+              PropertyIndexCallback,
+              ffi.Pointer<ffi.Void>,
+            )
+          >();
 
   int vtz_feature_decode_geometry(
     ffi.Pointer<VtzFeatureHandle> feature_handle,
@@ -310,6 +530,71 @@ class VtzeroDartBindings {
           ffi.Pointer<ffi.Void>,
         )
       >();
+
+  /// Exception handling
+  int vtz_get_last_exception_type() {
+    return _vtz_get_last_exception_type();
+  }
+
+  late final _vtz_get_last_exception_typePtr =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function()>>(
+        'vtz_get_last_exception_type',
+      );
+  late final _vtz_get_last_exception_type = _vtz_get_last_exception_typePtr
+      .asFunction<int Function()>();
+
+  ffi.Pointer<ffi.Char> vtz_get_last_exception_message() {
+    return _vtz_get_last_exception_message();
+  }
+
+  late final _vtz_get_last_exception_messagePtr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>(
+        'vtz_get_last_exception_message',
+      );
+  late final _vtz_get_last_exception_message =
+      _vtz_get_last_exception_messagePtr
+          .asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  void vtz_clear_exception() {
+    return _vtz_clear_exception();
+  }
+
+  late final _vtz_clear_exceptionPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>('vtz_clear_exception');
+  late final _vtz_clear_exception = _vtz_clear_exceptionPtr
+      .asFunction<void Function()>();
+}
+
+/// Exception type enum
+enum VtzExceptionType {
+  none(0),
+  format(1),
+  geometry(2),
+  type(3),
+  version(4),
+  outOfRange(5);
+
+  final int value;
+  const VtzExceptionType(this.value);
+
+  static VtzExceptionType fromInt(int value) {
+    switch (value) {
+      case 0:
+        return VtzExceptionType.none;
+      case 1:
+        return VtzExceptionType.format;
+      case 2:
+        return VtzExceptionType.geometry;
+      case 3:
+        return VtzExceptionType.type;
+      case 4:
+        return VtzExceptionType.version;
+      case 5:
+        return VtzExceptionType.outOfRange;
+      default:
+        return VtzExceptionType.none;
+    }
+  }
 }
 
 final class VtzTileHandle extends ffi.Opaque {}
@@ -317,6 +602,8 @@ final class VtzTileHandle extends ffi.Opaque {}
 final class VtzLayerHandle extends ffi.Opaque {}
 
 final class VtzFeatureHandle extends ffi.Opaque {}
+
+final class VtzPropertyValueHandle extends ffi.Opaque {}
 
 /// Property iteration callback
 typedef PropertyCallback =
@@ -342,6 +629,33 @@ typedef DartPropertyCallbackFunction =
       int int_value,
       int uint_value,
       bool bool_value,
+    );
+
+/// Property index operations
+final class VtzPropertyIndexPair extends ffi.Struct {
+  @ffi.Uint32()
+  external int key_index;
+
+  @ffi.Uint32()
+  external int value_index;
+
+  @ffi.Bool()
+  external bool valid;
+}
+
+typedef PropertyIndexCallback =
+    ffi.Pointer<ffi.NativeFunction<PropertyIndexCallbackFunction>>;
+typedef PropertyIndexCallbackFunction =
+    ffi.Void Function(
+      ffi.Pointer<ffi.Void> user_data,
+      ffi.Uint32 key_index,
+      ffi.Uint32 value_index,
+    );
+typedef DartPropertyIndexCallbackFunction =
+    void Function(
+      ffi.Pointer<ffi.Void> user_data,
+      int key_index,
+      int value_index,
     );
 
 /// Geometry decoding callback

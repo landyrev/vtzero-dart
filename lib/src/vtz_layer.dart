@@ -1,5 +1,6 @@
 import 'dart:ffi';
 import 'vtz_feature.dart';
+import 'vtz_property_value.dart';
 import 'vtz_bindings.dart';
 import '../vtzero_dart_bindings_generated.dart';
 
@@ -23,6 +24,7 @@ class VtzLayer {
 
     while (true) {
       final featureHandle = bindings.vtz_layer_next_feature(_handle);
+      checkException(); // Check for exceptions after next_feature
       if (featureHandle == nullptr) break;
 
       features.add(VtzFeature(featureHandle));
@@ -37,11 +39,25 @@ class VtzLayer {
     int count = 0;
     while (true) {
       final featureHandle = bindings.vtz_layer_next_feature(_handle);
+      checkException(); // Check for exceptions after next_feature
       if (featureHandle == nullptr) break;
       bindings.vtz_feature_free(featureHandle);
       count++;
     }
     return count;
+  }
+
+  /// Get the size of the value table
+  int get valueTableSize {
+    return bindings.vtz_layer_value_table_size(_handle);
+  }
+
+  /// Get a property value from the value table by index
+  VtzPropertyValue? getValue(int index) {
+    final handle = bindings.vtz_layer_value(_handle, index);
+    checkException(); // Check for exceptions after value
+    if (handle == nullptr) return null;
+    return VtzPropertyValue(handle);
   }
 
   /// Free native resources
