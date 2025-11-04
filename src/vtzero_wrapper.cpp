@@ -1,14 +1,39 @@
 #include "vtzero_dart.h"
 #include "../third_party/vtzero/include/vtzero/vector_tile.hpp"
 #include "../third_party/vtzero/include/vtzero/geometry.hpp"
+#include "../third_party/vtzero/include/vtzero/exception.hpp"
 #include <string>
 #include <vector>
 #include <cstring>
 #include <cmath>
+#include <mutex>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+// Thread-safe exception storage
+namespace {
+    struct ExceptionStorage {
+        VtzExceptionType type = VTZ_EXCEPTION_NONE;
+        std::string message;
+    };
+
+    static ExceptionStorage g_exception_storage;
+    static std::mutex g_exception_mutex;
+
+    void set_exception(VtzExceptionType type, const std::string& msg) {
+        std::lock_guard<std::mutex> lock(g_exception_mutex);
+        g_exception_storage.type = type;
+        g_exception_storage.message = msg;
+    }
+
+    void clear_exception() {
+        std::lock_guard<std::mutex> lock(g_exception_mutex);
+        g_exception_storage.type = VTZ_EXCEPTION_NONE;
+        g_exception_storage.message.clear();
+    }
+}
 
 // Opaque handles for passing between C and C++
 struct VtzTileHandle {
@@ -49,6 +74,7 @@ FFI_PLUGIN_EXPORT void vtz_tile_free(VtzTileHandle* handle) {
 }
 
 FFI_PLUGIN_EXPORT VtzLayerHandle* vtz_tile_next_layer(VtzTileHandle* tile_handle) {
+    clear_exception();
     try {
         if (!tile_handle) {
             return nullptr;
@@ -60,15 +86,23 @@ FFI_PLUGIN_EXPORT VtzLayerHandle* vtz_tile_next_layer(VtzTileHandle* tile_handle
         }
 
         return nullptr;
+    } catch (const vtzero::version_exception& e) {
+        set_exception(VTZ_EXCEPTION_VERSION, e.what());
+        return nullptr;
+    } catch (const vtzero::format_exception& e) {
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
+        return nullptr;
     } catch (const std::exception& e) {
-        // Exception during layer iteration
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
         return nullptr;
     } catch (...) {
+        set_exception(VTZ_EXCEPTION_FORMAT, "Unknown exception");
         return nullptr;
     }
 }
 
 FFI_PLUGIN_EXPORT VtzLayerHandle* vtz_tile_get_layer_by_name(VtzTileHandle* tile_handle, const char* name) {
+    clear_exception();
     try {
         if (!tile_handle || !name) return nullptr;
 
@@ -76,7 +110,14 @@ FFI_PLUGIN_EXPORT VtzLayerHandle* vtz_tile_get_layer_by_name(VtzTileHandle* tile
         if (!layer) return nullptr;
 
         return new VtzLayerHandle(std::move(layer));
+    } catch (const vtzero::format_exception& e) {
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
+        return nullptr;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
+        return nullptr;
     } catch (...) {
+        set_exception(VTZ_EXCEPTION_FORMAT, "Unknown exception");
         return nullptr;
     }
 }
@@ -102,6 +143,7 @@ FFI_PLUGIN_EXPORT uint32_t vtz_layer_version(VtzLayerHandle* layer_handle) {
 }
 
 FFI_PLUGIN_EXPORT VtzFeatureHandle* vtz_layer_next_feature(VtzLayerHandle* layer_handle) {
+    clear_exception();
     try {
         if (!layer_handle) return nullptr;
 
@@ -109,8 +151,220 @@ FFI_PLUGIN_EXPORT VtzFeatureHandle* vtz_layer_next_feature(VtzLayerHandle* layer
         if (!feature) return nullptr;
 
         return new VtzFeatureHandle(std::move(feature));
-    } catch (...) {
+    } catch (const vtzero::format_exception& e) {
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
         return nullptr;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
+        return nullptr;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_FORMAT, "Unknown exception");
+        return nullptr;
+    }
+}
+
+// Value table operations
+FFI_PLUGIN_EXPORT size_t vtz_layer_value_table_size(VtzLayerHandle* layer_handle) {
+    if (!layer_handle) return 0;
+    try {
+        // value_table_size() doesn't throw, but accessing value_table() might
+        // if it needs to initialize and encounters malformed data
+        return layer_handle->layer.value_table_size();
+    } catch (...) {
+        return 0;
+    }
+}
+
+// Property value handle - stores the data_view from layer
+struct VtzPropertyValueHandle {
+    vtzero::property_value value;
+    std::string string_storage; // For string values
+
+    VtzPropertyValueHandle(const vtzero::property_value& pv) : value(pv) {
+        // Store string value if needed
+        if (pv.type() == vtzero::property_value_type::string_value) {
+            auto view = pv.string_value();
+            string_storage = std::string(view.data(), view.size());
+        }
+    }
+};
+
+FFI_PLUGIN_EXPORT VtzPropertyValueHandle* vtz_layer_value(VtzLayerHandle* layer_handle, uint32_t index) {
+    clear_exception();
+    if (!layer_handle) return nullptr;
+    try {
+        vtzero::index_value idx(index);
+        // value() may call value_table() which may initialize the table
+        // This should not throw for malformed values - only accessing type() throws
+        auto pv = layer_handle->layer.value(idx);
+        return new VtzPropertyValueHandle(pv);
+    } catch (const vtzero::out_of_range_exception& e) {
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, e.what());
+        return nullptr;
+    } catch (const vtzero::format_exception& e) {
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
+        return nullptr;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
+        return nullptr;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_FORMAT, "Unknown exception");
+        return nullptr;
+    }
+}
+
+FFI_PLUGIN_EXPORT void vtz_property_value_free(VtzPropertyValueHandle* handle) {
+    delete handle;
+}
+
+FFI_PLUGIN_EXPORT int32_t vtz_property_value_type(VtzPropertyValueHandle* handle) {
+    clear_exception();
+    if (!handle) return -1;
+    try {
+        auto type = handle->value.type();
+        switch (type) {
+            case vtzero::property_value_type::string_value: return 1;
+            case vtzero::property_value_type::float_value: return 2;
+            case vtzero::property_value_type::double_value: return 3;
+            case vtzero::property_value_type::int_value: return 4;
+            case vtzero::property_value_type::uint_value: return 5;
+            case vtzero::property_value_type::sint_value: return 6;
+            case vtzero::property_value_type::bool_value: return 7;
+            default: return -1;
+        }
+    } catch (const vtzero::format_exception& e) {
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
+        return -1;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_FORMAT, e.what());
+        return -1;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_FORMAT, "Unknown exception");
+        return -1;
+    }
+}
+
+FFI_PLUGIN_EXPORT const char* vtz_property_value_string(VtzPropertyValueHandle* handle) {
+    clear_exception();
+    if (!handle) return nullptr;
+    try {
+        auto type = handle->value.type();
+        if (type == vtzero::property_value_type::string_value) {
+            return handle->string_storage.c_str();
+        }
+        // Wrong type - throw type_exception to match C++ behavior
+        throw vtzero::type_exception{};
+    } catch (const vtzero::type_exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return nullptr;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return nullptr;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_TYPE, "Unknown exception");
+        return nullptr;
+    }
+}
+
+FFI_PLUGIN_EXPORT float vtz_property_value_float(VtzPropertyValueHandle* handle) {
+    clear_exception();
+    if (!handle) return 0.0f;
+    try {
+        return handle->value.float_value();
+    } catch (const vtzero::type_exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0.0f;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0.0f;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_TYPE, "Unknown exception");
+        return 0.0f;
+    }
+}
+
+FFI_PLUGIN_EXPORT double vtz_property_value_double(VtzPropertyValueHandle* handle) {
+    clear_exception();
+    if (!handle) return 0.0;
+    try {
+        return handle->value.double_value();
+    } catch (const vtzero::type_exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0.0;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0.0;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_TYPE, "Unknown exception");
+        return 0.0;
+    }
+}
+
+FFI_PLUGIN_EXPORT int64_t vtz_property_value_int(VtzPropertyValueHandle* handle) {
+    clear_exception();
+    if (!handle) return 0;
+    try {
+        return handle->value.int_value();
+    } catch (const vtzero::type_exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_TYPE, "Unknown exception");
+        return 0;
+    }
+}
+
+FFI_PLUGIN_EXPORT uint64_t vtz_property_value_uint(VtzPropertyValueHandle* handle) {
+    clear_exception();
+    if (!handle) return 0;
+    try {
+        return handle->value.uint_value();
+    } catch (const vtzero::type_exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_TYPE, "Unknown exception");
+        return 0;
+    }
+}
+
+FFI_PLUGIN_EXPORT int64_t vtz_property_value_sint(VtzPropertyValueHandle* handle) {
+    clear_exception();
+    if (!handle) return 0;
+    try {
+        return handle->value.sint_value();
+    } catch (const vtzero::type_exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return 0;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_TYPE, "Unknown exception");
+        return 0;
+    }
+}
+
+FFI_PLUGIN_EXPORT bool vtz_property_value_bool(VtzPropertyValueHandle* handle) {
+    clear_exception();
+    if (!handle) return false;
+    try {
+        return handle->value.bool_value();
+    } catch (const vtzero::type_exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return false;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_TYPE, e.what());
+        return false;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_TYPE, "Unknown exception");
+        return false;
     }
 }
 
@@ -142,6 +396,7 @@ typedef void (*PropertyCallback)(void* user_data, const char* key, int32_t value
 FFI_PLUGIN_EXPORT void vtz_feature_for_each_property(VtzFeatureHandle* feature_handle,
                                                        PropertyCallback callback,
                                                        void* user_data) {
+    clear_exception();
     if (!feature_handle || !callback) return;
 
     try {
@@ -169,8 +424,69 @@ FFI_PLUGIN_EXPORT void vtz_feature_for_each_property(VtzFeatureHandle* feature_h
             }
             return true;
         });
+    } catch (const vtzero::out_of_range_exception& e) {
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, e.what());
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, e.what());
     } catch (...) {
-        // Error during property iteration
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, "Unknown exception");
+    }
+}
+
+// Property index operations
+FFI_PLUGIN_EXPORT VtzPropertyIndexPair vtz_feature_next_property_indexes(VtzFeatureHandle* feature_handle) {
+    clear_exception();
+    VtzPropertyIndexPair result = {0, 0, false};
+    if (!feature_handle) return result;
+
+    try {
+        auto idxs = feature_handle->feature.next_property_indexes();
+        if (idxs) {
+            result.key_index = idxs.key().value();
+            result.value_index = idxs.value().value();
+            result.valid = true;
+        }
+    } catch (const vtzero::out_of_range_exception& e) {
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, e.what());
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, e.what());
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, "Unknown exception");
+    }
+    return result;
+}
+
+FFI_PLUGIN_EXPORT void vtz_feature_reset_property(VtzFeatureHandle* feature_handle) {
+    if (!feature_handle) return;
+    try {
+        feature_handle->feature.reset_property();
+    } catch (...) {
+        // Error resetting property
+    }
+}
+
+typedef void (*PropertyIndexCallback)(void* user_data, uint32_t key_index, uint32_t value_index);
+
+FFI_PLUGIN_EXPORT bool vtz_feature_for_each_property_indexes(VtzFeatureHandle* feature_handle,
+                                                              PropertyIndexCallback callback,
+                                                              void* user_data) {
+    clear_exception();
+    if (!feature_handle || !callback) return false;
+
+    try {
+        return feature_handle->feature.for_each_property_indexes([&](vtzero::index_value_pair&& idxs) {
+            callback(user_data, idxs.key().value(), idxs.value().value());
+            return true;
+        });
+    } catch (const vtzero::out_of_range_exception& e) {
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, e.what());
+        return false;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, e.what());
+        return false;
+    } catch (...) {
+        set_exception(VTZ_EXCEPTION_OUT_OF_RANGE, "Unknown exception");
+        return false;
     }
 }
 
@@ -217,20 +533,23 @@ struct GeometryHandler {
         callback(user_data, 8, p.x, p.y); // Command 8 = ring_point
     }
 
-    void ring_end(bool /*is_outer*/) {
+    void ring_end(vtzero::ring_type /*rt*/) {
         callback(user_data, 9, 0, 0); // Command 9 = ring_end
     }
 };
 
-FFI_PLUGIN_EXPORT void vtz_feature_decode_geometry(VtzFeatureHandle* feature_handle,
+FFI_PLUGIN_EXPORT int vtz_feature_decode_geometry(VtzFeatureHandle* feature_handle,
                                                      GeometryCallback callback,
                                                      void* user_data) {
-    if (!feature_handle || !callback) return;
+    clear_exception();
+    if (!feature_handle || !callback) return -1;
 
     try {
         auto geometry = feature_handle->feature.geometry();
         GeometryHandler handler{callback, user_data};
 
+        // Check geometry type and use appropriate decode function
+        // For unknown types, throw geometry_exception to match C++ behavior
         switch (geometry.type()) {
             case vtzero::GeomType::POINT:
                 vtzero::decode_point_geometry(geometry, handler);
@@ -242,11 +561,19 @@ FFI_PLUGIN_EXPORT void vtz_feature_decode_geometry(VtzFeatureHandle* feature_han
                 vtzero::decode_polygon_geometry(geometry, handler);
                 break;
             default:
-                // Unknown geometry type
-                break;
+                // Unknown geometry type - throw geometry_exception to match C++ behavior
+                throw vtzero::geometry_exception{"unknown geometry type"};
         }
+        return 0; // Success
+    } catch (const vtzero::geometry_exception& e) {
+        set_exception(VTZ_EXCEPTION_GEOMETRY, e.what());
+        return 1;
+    } catch (const std::exception& e) {
+        set_exception(VTZ_EXCEPTION_GEOMETRY, e.what());
+        return -1;
     } catch (...) {
-        // Error during geometry decoding
+        set_exception(VTZ_EXCEPTION_GEOMETRY, "Unknown exception");
+        return -1;
     }
 }
 
@@ -355,4 +682,24 @@ FFI_PLUGIN_EXPORT void vtz_feature_to_geojson(VtzFeatureHandle* feature_handle,
     } catch (...) {
         // Error during GeoJSON conversion
     }
+}
+
+// Exception handling API
+FFI_PLUGIN_EXPORT VtzExceptionType vtz_get_last_exception_type(void) {
+    std::lock_guard<std::mutex> lock(g_exception_mutex);
+    return g_exception_storage.type;
+}
+
+FFI_PLUGIN_EXPORT const char* vtz_get_last_exception_message(void) {
+    std::lock_guard<std::mutex> lock(g_exception_mutex);
+    if (g_exception_storage.message.empty()) {
+        return nullptr;
+    }
+    // Return a pointer to the stored message
+    // Note: This is safe because the message is stored in static storage
+    return g_exception_storage.message.c_str();
+}
+
+FFI_PLUGIN_EXPORT void vtz_clear_exception(void) {
+    clear_exception();
 }

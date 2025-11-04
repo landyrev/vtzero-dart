@@ -31,6 +31,37 @@ class VtzFeature {
     return null;
   }
 
+  /// Get the number of properties
+  int get numProperties {
+    int count = 0;
+    final statePtr = malloc<IntPtr>();
+    statePtr.value = count.hashCode;
+
+    final callback = Pointer.fromFunction<PropertyIndexCallbackFunction>(
+      _propertyIndexCallbackStatic,
+    );
+
+    _propertyIndexCountMap[count.hashCode] = 0;
+
+    bindings.vtz_feature_for_each_property_indexes(_handle, callback, statePtr.cast());
+
+    final result = _propertyIndexCountMap.remove(count.hashCode) ?? 0;
+    malloc.free(statePtr);
+    return result;
+  }
+
+  static final Map<int, int> _propertyIndexCountMap = {};
+
+  static void _propertyIndexCallbackStatic(
+    Pointer<Void> userData,
+    int keyIndex,
+    int valueIndex,
+  ) {
+    final hashCode = userData.cast<IntPtr>().value;
+    final count = _propertyIndexCountMap[hashCode] ?? 0;
+    _propertyIndexCountMap[hashCode] = count + 1;
+  }
+
   /// Get feature properties as a map
   Map<String, dynamic> getProperties() {
     final properties = <String, dynamic>{};
@@ -45,6 +76,7 @@ class VtzFeature {
     _propertiesMap[properties.hashCode] = properties;
 
     bindings.vtz_feature_for_each_property(_handle, callback, propertiesPtr.cast());
+    checkException(); // Check for exceptions during property iteration
 
     _propertiesMap.remove(properties.hashCode);
     malloc.free(propertiesPtr);
@@ -107,10 +139,18 @@ class VtzFeature {
     // Store state in a global map temporarily
     _geometryStateMap[state.hashCode] = state;
 
-    bindings.vtz_feature_decode_geometry(_handle, callback, statePtr.cast());
+    final result = bindings.vtz_feature_decode_geometry(_handle, callback, statePtr.cast());
+    checkException(); // Check for exceptions and get message
 
     _geometryStateMap.remove(state.hashCode);
     malloc.free(statePtr);
+
+    // Check for errors
+    if (result != 0) {
+      // Exception was already thrown by checkException() with proper message
+      // This should not be reached, but keep as fallback
+      throw Exception('Error decoding geometry');
+    }
 
     return state.result;
   }
@@ -225,6 +265,64 @@ class VtzFeature {
         break;
     }
   }
+
+  /// Reset the property iterator to the beginning
+  void resetProperty() {
+    bindings.vtz_feature_reset_property(_handle);
+  }
+
+  /// Get the next property as index pair (key index, value index)
+  /// Returns null if no more properties
+  ({int keyIndex, int valueIndex})? nextPropertyIndexes() {
+    final result = bindings.vtz_feature_next_property_indexes(_handle);
+    checkException(); // Check for exceptions during property index access
+    if (!result.valid) return null;
+    return (keyIndex: result.key_index, valueIndex: result.value_index);
+  }
+
+  /// Call a function for each property index pair
+  /// Returns true if iteration completed, false if stopped early
+  bool forEachPropertyIndexes(bool Function(int keyIndex, int valueIndex) callback) {
+    final statePtr = malloc<IntPtr>();
+    statePtr.value = callback.hashCode;
+    
+    final callbackWrapper = Pointer.fromFunction<PropertyIndexCallbackFunction>(
+      _forEachPropertyIndexCallbackStatic,
+    );
+
+    _propertyIndexCallbackMap[callback.hashCode] = callback;
+    _propertyIndexStopMap[callback.hashCode] = false;
+
+    final result = bindings.vtz_feature_for_each_property_indexes(
+      _handle,
+      callbackWrapper,
+      statePtr.cast(),
+    );
+    checkException(); // Check for exceptions during property index iteration
+
+    final stopped = _propertyIndexStopMap.remove(callback.hashCode) ?? false;
+    _propertyIndexCallbackMap.remove(callback.hashCode);
+    malloc.free(statePtr);
+
+    return result && !stopped;
+  }
+
+  static void _forEachPropertyIndexCallbackStatic(
+    Pointer<Void> userData,
+    int keyIndex,
+    int valueIndex,
+  ) {
+    final hashCode = userData.cast<IntPtr>().value;
+    final cb = _propertyIndexCallbackMap[hashCode];
+    if (cb != null) {
+      if (!cb(keyIndex, valueIndex)) {
+        _propertyIndexStopMap[hashCode] = true;
+      }
+    }
+  }
+
+  static final Map<int, bool Function(int, int)> _propertyIndexCallbackMap = {};
+  static final Map<int, bool> _propertyIndexStopMap = {};
 
   void dispose() {
     bindings.vtz_feature_free(_handle);

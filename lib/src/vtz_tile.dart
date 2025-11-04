@@ -36,6 +36,7 @@ class VtzTile {
 
     while (true) {
       final layerHandle = bindings.vtz_tile_next_layer(_handle);
+      checkException(); // Check for exceptions after next_layer
       if (layerHandle == nullptr) break;
 
       final namePtr = bindings.vtz_layer_name(layerHandle);
@@ -60,6 +61,7 @@ class VtzTile {
     final namePtr = name.toNativeUtf8();
     final layerHandle = bindings.vtz_tile_get_layer_by_name(_handle, namePtr.cast());
     malloc.free(namePtr);
+    checkException(); // Check for exceptions after get_layer_by_name
 
     if (layerHandle == nullptr) {
       return null;
