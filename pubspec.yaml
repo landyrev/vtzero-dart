@@ -78,5 +78,6 @@ flutter:
   # For details regarding fonts in packages, see
   # https://flutter.dev/to/font-from-package
 
-# Native assets configuration for pre-built binaries
-# The build hook is defined in hook/build.dart
+# Pre-built binaries are stored in lib/native/{platform}/{architecture}/
+# The build script is defined in scripts/build_native.dart
+# Android/iOS libraries are built automatically by Flutter's plugin system

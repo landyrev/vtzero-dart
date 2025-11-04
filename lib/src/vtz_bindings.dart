@@ -11,15 +11,19 @@ final DynamicLibrary _dylib = () {
   // Try to find the library in common locations
   final possiblePaths = <String>[];
 
-  // Get architecture (for native assets)
+  // Get architecture (for pre-built binaries)
   final architecture = _getArchitecture();
   final platform = Platform.operatingSystem;
 
   if (Platform.isMacOS || Platform.isIOS) {
-    // Try native assets first (for published packages)
-    possiblePaths.add('native_assets/$platform/$architecture/lib$_libName.dylib');
-    possiblePaths.add('../native_assets/$platform/$architecture/lib$_libName.dylib');
-    possiblePaths.add('../../native_assets/$platform/$architecture/lib$_libName.dylib');
+    // Try pre-built binaries first (for published packages)
+    possiblePaths.add('lib/native/$platform/$architecture/lib$_libName.dylib');
+    possiblePaths.add(
+      '../lib/native/$platform/$architecture/lib$_libName.dylib',
+    );
+    possiblePaths.add(
+      '../../lib/native/$platform/$architecture/lib$_libName.dylib',
+    );
     // Try framework (for iOS/App bundles)
     possiblePaths.add('$_libName.framework/$_libName');
     // Try dylib in build directory (for tests/development)
@@ -27,20 +31,22 @@ final DynamicLibrary _dylib = () {
     possiblePaths.add('../build/lib$_libName.dylib');
     possiblePaths.add('../../build/lib$_libName.dylib');
   } else if (Platform.isAndroid || Platform.isLinux) {
-    // Try native assets first (for published packages)
-    possiblePaths.add('native_assets/$platform/$architecture/lib$_libName.so');
-    possiblePaths.add('../native_assets/$platform/$architecture/lib$_libName.so');
-    possiblePaths.add('../../native_assets/$platform/$architecture/lib$_libName.so');
+    // Try pre-built binaries first (for published packages)
+    possiblePaths.add('lib/native/$platform/$architecture/lib$_libName.so');
+    possiblePaths.add('../lib/native/$platform/$architecture/lib$_libName.so');
+    possiblePaths.add(
+      '../../lib/native/$platform/$architecture/lib$_libName.so',
+    );
     // Try standard library paths
     possiblePaths.add('lib$_libName.so');
     // Try build directory (for tests/development)
     possiblePaths.add('build/lib$_libName.so');
     possiblePaths.add('../build/lib$_libName.so');
   } else if (Platform.isWindows) {
-    // Try native assets first (for published packages)
-    possiblePaths.add('native_assets/$platform/$architecture/$_libName.dll');
-    possiblePaths.add('../native_assets/$platform/$architecture/$_libName.dll');
-    possiblePaths.add('../../native_assets/$platform/$architecture/$_libName.dll');
+    // Try pre-built binaries first (for published packages)
+    possiblePaths.add('lib/native/$platform/$architecture/$_libName.dll');
+    possiblePaths.add('../lib/native/$platform/$architecture/$_libName.dll');
+    possiblePaths.add('../../lib/native/$platform/$architecture/$_libName.dll');
     // Try standard library paths
     possiblePaths.add('$_libName.dll');
     // Try build directory (for tests/development)
@@ -64,7 +70,7 @@ final DynamicLibrary _dylib = () {
     'Failed to load dynamic library $_libName. '
     'Tried paths: ${possiblePaths.join(", ")}. '
     'Make sure the library is built and available. '
-    'Run "dart run hook/build.dart" to build native assets.',
+    'Run "dart scripts/build_native.dart" to build native libraries.',
   );
 }();
 
@@ -120,7 +126,9 @@ final VtzeroDartBindings bindings = VtzeroDartBindings(_dylib);
 
 /// Check for exceptions and throw appropriate Dart exception if one occurred
 void checkException() {
-  final exceptionType = VtzExceptionType.fromInt(bindings.vtz_get_last_exception_type());
+  final exceptionType = VtzExceptionType.fromInt(
+    bindings.vtz_get_last_exception_type(),
+  );
   if (exceptionType == VtzExceptionType.none) {
     return;
   }

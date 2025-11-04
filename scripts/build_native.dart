@@ -76,7 +76,7 @@ Future<bool> _buildForPlatform({
   bool allSucceeded = true;
 
   for (final architecture in architectures) {
-    print('Building native assets for $platform ($architecture)...');
+    print('Building native library for $platform ($architecture)...');
 
     final buildDir = packageRootUri
         .resolve('build/native_assets_build/$platform/$architecture/')
@@ -243,17 +243,17 @@ Future<bool> _buildForPlatform({
       continue;
     }
 
-    // Create native_assets directory structure
-    final nativeAssetsDir = packageRootUri
-        .resolve('native_assets/$platform/$architecture/')
+    // Create lib/native directory structure
+    final nativeLibDir = packageRootUri
+        .resolve('lib/native/$platform/$architecture/')
         .toFilePath();
-    await Directory(nativeAssetsDir).create(recursive: true);
+    await Directory(nativeLibDir).create(recursive: true);
 
-    // Copy library to native_assets directory
-    final targetPath = '$nativeAssetsDir$libraryName';
+    // Copy library to lib/native directory
+    final targetPath = '$nativeLibDir$libraryName';
     await builtLibrary.copy(targetPath);
 
-    print('  Native asset built successfully: $targetPath');
+    print('  Native library built successfully: $targetPath');
   }
 
   return allSucceeded;

@@ -233,26 +233,26 @@ flutter pub get
 dart run ffigen --config ffigen.yaml
 ```
 
-### Building Native Assets for pub.dev Distribution
+### Building Native Libraries for Distribution
 
-This package includes pre-built binaries for supported platforms. To build native assets locally:
+This package includes pre-built binaries for supported platforms. For Android and iOS, Flutter's plugin system automatically builds the native code. For desktop platforms (macOS, Linux, Windows), you can build binaries locally:
 
 ```bash
 # Build for current platform only (default)
-dart hook/build.dart
+dart scripts/build_native.dart
 
 # Build for all supported platforms (macOS, Linux, Windows, iOS, Android)
-dart hook/build.dart --all
+dart scripts/build_native.dart --all
 # or
-dart hook/build.dart -a
+dart scripts/build_native.dart -a
 
 # Build for specific platform(s)
-dart hook/build.dart --platform macos
-dart hook/build.dart --platform ios
-dart hook/build.dart --platform android
-dart hook/build.dart --platform linux --platform windows
+dart scripts/build_native.dart --platform macos
+dart scripts/build_native.dart --platform ios
+dart scripts/build_native.dart --platform android
+dart scripts/build_native.dart --platform linux --platform windows
 # or
-dart hook/build.dart -p macos -p ios -p android
+dart scripts/build_native.dart -p macos -p ios -p android
 ```
 
 **Platform-Specific Notes:**
@@ -278,9 +278,9 @@ dart hook/build.dart -p macos -p ios -p android
 This will:
 1. Detect your platform and architecture (macOS, Linux, Windows, etc.)
 2. Build the native library using CMake
-3. Place the built library in `native_assets/{platform}/{architecture}/`
+3. Place the built library in `lib/native/{platform}/{architecture}/`
 
-The built binaries will be automatically used by the package when published to pub.dev.
+**Note:** Android and iOS libraries are automatically built by Flutter's plugin system (`ffiPlugin: true`). The build script is primarily for desktop platforms or when you need to distribute pre-built binaries.
 
 **Supported Platforms:**
 - macOS (arm64, x86_64)
@@ -289,7 +289,7 @@ The built binaries will be automatically used by the package when published to p
 - Android (arm64-v8a, armeabi-v7a, x86, x86_64)
 - iOS (arm64, x86_64 for simulator)
 
-**Note:** The native assets feature requires Dart SDK 3.5+ with the `--enable-experiment=native-assets` flag (currently experimental). When published to pub.dev, the package will automatically include pre-built binaries for all supported platforms.
+**Note:** This package does not require the native-assets experiment. Android and iOS libraries are built automatically by Flutter's plugin system. Desktop platforms can use pre-built binaries placed in `lib/native/` or build from source.
 
 ### Build Native Code (Legacy/Development)
 
