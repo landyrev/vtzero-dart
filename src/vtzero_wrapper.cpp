@@ -647,7 +647,7 @@ struct GeoJsonHandler {
         callback(user_data, 1, lon, lat); // POINT
     }
 
-    void ring_end(bool /*is_outer*/) {
+    void ring_end(vtzero::ring_type /*rt*/) {
         callback(user_data, 2, 0, 0); // END_RING
     }
 };
