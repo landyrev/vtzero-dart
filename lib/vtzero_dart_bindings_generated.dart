@@ -237,7 +237,7 @@ class VtzeroDartBindings {
         )
       >();
 
-  void vtz_feature_decode_geometry(
+  int vtz_feature_decode_geometry(
     ffi.Pointer<VtzFeatureHandle> feature_handle,
     GeometryCallback callback,
     ffi.Pointer<ffi.Void> user_data,
@@ -248,7 +248,7 @@ class VtzeroDartBindings {
   late final _vtz_feature_decode_geometryPtr =
       _lookup<
         ffi.NativeFunction<
-          ffi.Void Function(
+          ffi.Int Function(
             ffi.Pointer<VtzFeatureHandle>,
             GeometryCallback,
             ffi.Pointer<ffi.Void>,
@@ -257,7 +257,7 @@ class VtzeroDartBindings {
       >('vtz_feature_decode_geometry');
   late final _vtz_feature_decode_geometry = _vtz_feature_decode_geometryPtr
       .asFunction<
-        void Function(
+        int Function(
           ffi.Pointer<VtzFeatureHandle>,
           GeometryCallback,
           ffi.Pointer<ffi.Void>,

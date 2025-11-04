@@ -107,10 +107,21 @@ class VtzFeature {
     // Store state in a global map temporarily
     _geometryStateMap[state.hashCode] = state;
 
-    bindings.vtz_feature_decode_geometry(_handle, callback, statePtr.cast());
+    final result = bindings.vtz_feature_decode_geometry(_handle, callback, statePtr.cast());
 
     _geometryStateMap.remove(state.hashCode);
     malloc.free(statePtr);
+
+    // Check for errors
+    if (result != 0) {
+      if (result == 1) {
+        // Geometry exception (e.g., unknown geometry type)
+        throw Exception('Geometry exception: unknown geometry type');
+      } else {
+        // Other error
+        throw Exception('Error decoding geometry');
+      }
+    }
 
     return state.result;
   }

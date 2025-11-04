@@ -217,20 +217,22 @@ struct GeometryHandler {
         callback(user_data, 8, p.x, p.y); // Command 8 = ring_point
     }
 
-    void ring_end(bool /*is_outer*/) {
+    void ring_end(vtzero::ring_type /*rt*/) {
         callback(user_data, 9, 0, 0); // Command 9 = ring_end
     }
 };
 
-FFI_PLUGIN_EXPORT void vtz_feature_decode_geometry(VtzFeatureHandle* feature_handle,
+FFI_PLUGIN_EXPORT int vtz_feature_decode_geometry(VtzFeatureHandle* feature_handle,
                                                      GeometryCallback callback,
                                                      void* user_data) {
-    if (!feature_handle || !callback) return;
+    if (!feature_handle || !callback) return -1;
 
     try {
         auto geometry = feature_handle->feature.geometry();
         GeometryHandler handler{callback, user_data};
 
+        // Check geometry type and use appropriate decode function
+        // For unknown types, throw geometry_exception to match C++ behavior
         switch (geometry.type()) {
             case vtzero::GeomType::POINT:
                 vtzero::decode_point_geometry(geometry, handler);
@@ -242,11 +244,16 @@ FFI_PLUGIN_EXPORT void vtz_feature_decode_geometry(VtzFeatureHandle* feature_han
                 vtzero::decode_polygon_geometry(geometry, handler);
                 break;
             default:
-                // Unknown geometry type
-                break;
+                // Unknown geometry type - throw geometry_exception to match C++ behavior
+                throw vtzero::geometry_exception{"unknown geometry type"};
         }
+        return 0; // Success
+    } catch (const vtzero::geometry_exception&) {
+        // Return error code for geometry exceptions (e.g., unknown geometry type)
+        return 1;
     } catch (...) {
-        // Error during geometry decoding
+        // Other errors during geometry decoding
+        return -1;
     }
 }
 

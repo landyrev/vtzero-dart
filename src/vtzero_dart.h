@@ -56,7 +56,7 @@ FFI_PLUGIN_EXPORT void vtz_feature_for_each_property(VtzFeatureHandle* feature_h
 // Geometry decoding callback
 typedef void (*GeometryCallback)(void* user_data, uint32_t command, int32_t x, int32_t y);
 
-FFI_PLUGIN_EXPORT void vtz_feature_decode_geometry(VtzFeatureHandle* feature_handle,
+FFI_PLUGIN_EXPORT int vtz_feature_decode_geometry(VtzFeatureHandle* feature_handle,
                                                      GeometryCallback callback,
                                                      void* user_data);
 
