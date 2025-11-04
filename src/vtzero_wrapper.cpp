@@ -590,8 +590,12 @@ struct GeoJsonHandler {
     double x0;
     double y0;
 
+    // For polygon rings: collect points and fix winding order
+    std::vector<std::pair<double, double>> current_ring;
+    bool is_polygon_ring;
+
     GeoJsonHandler(GeoJsonCallback cb, void* data, uint32_t ext, int32_t tx, int32_t ty, uint32_t tz)
-        : callback(cb), user_data(data), extent(ext), tile_x(tx), tile_y(ty), tile_z(tz) {
+        : callback(cb), user_data(data), extent(ext), tile_x(tx), tile_y(ty), tile_z(tz), is_polygon_ring(false) {
         size = static_cast<double>(extent) * (1 << tz); // extent * 2^z
         x0 = static_cast<double>(extent) * tile_x;
         y0 = static_cast<double>(extent) * tile_y;
@@ -604,6 +608,97 @@ struct GeoJsonHandler {
         double y2 = 180.0 - (y + y0) * 360.0 / size;
         lon = (x + x0) * 360.0 / size - 180.0;
         lat = 360.0 / M_PI * atan(exp(y2 * M_PI / 180.0)) - 90.0;
+    }
+
+    // Calculate signed area of a ring using shoelace formula
+    // Returns positive for counter-clockwise, negative for clockwise
+    // Note: ring may be closed (first point == last point), which we handle
+    double calculate_signed_area(const std::vector<std::pair<double, double>>& ring) {
+        if (ring.size() < 3) return 0.0;
+        
+        double area = 0.0;
+        // Use ring.size() - 1 to skip duplicate closing point if it exists
+        // This handles both closed rings (first == last) and open rings
+        size_t n = ring.size();
+        size_t effective_n = n;
+        
+        // Check if ring is closed (first point == last point)
+        if (n > 3 && ring[0].first == ring[n-1].first && ring[0].second == ring[n-1].second) {
+            effective_n = n - 1; // Skip duplicate closing point
+        }
+        
+        for (size_t i = 0; i < effective_n; ++i) {
+            size_t j = (i + 1) % effective_n;
+            area += ring[i].first * ring[j].second;
+            area -= ring[j].first * ring[i].second;
+        }
+        return area * 0.5;
+    }
+
+    // Emit ring points, reversing if needed to follow GeoJSON right-hand rule
+    void emit_ring(bool is_outer) {
+        if (current_ring.size() < 3) {
+            // Invalid ring, skip it
+            current_ring.clear();
+            return;
+        }
+
+        // Check if ring is closed (first point == last point)
+        bool is_closed = (current_ring.size() > 3 &&
+                         current_ring[0].first == current_ring[current_ring.size()-1].first &&
+                         current_ring[0].second == current_ring[current_ring.size()-1].second);
+        
+        // Calculate signed area to determine winding order
+        // Use all points for area calculation (closed rings are handled in calculate_signed_area)
+        double area = calculate_signed_area(current_ring);
+        
+        // GeoJSON right-hand rule:
+        // - Outer rings must be counter-clockwise (positive area)
+        // - Inner rings must be clockwise (negative area)
+        bool should_reverse = false;
+        if (is_outer) {
+            // Outer ring should be CCW (positive area)
+            if (area < 0.0) {
+                should_reverse = true;
+            }
+        } else {
+            // Inner ring should be CW (negative area)
+            if (area > 0.0) {
+                should_reverse = true;
+            }
+        }
+
+        // Emit ring
+        callback(user_data, 0, 0, 0); // BEGIN_RING
+        
+        if (should_reverse) {
+            // Emit points in reverse order, ensuring ring stays closed
+            if (is_closed) {
+                // For closed ring [A, B, C, A], reverse to [A, C, B, A]
+                // Emit first point A
+                callback(user_data, 1, current_ring[0].first, current_ring[0].second);
+                // Emit middle points in reverse (skip first and last duplicate)
+                for (size_t i = current_ring.size() - 2; i > 0; --i) {
+                    callback(user_data, 1, current_ring[i].first, current_ring[i].second);
+                }
+                // Close the ring with first point again
+                callback(user_data, 1, current_ring[0].first, current_ring[0].second);
+            } else {
+                // Ring not closed, just reverse all points
+                for (auto it = current_ring.rbegin(); it != current_ring.rend(); ++it) {
+                    callback(user_data, 1, it->first, it->second);
+                }
+            }
+        } else {
+            // Emit points in original order
+            // GeoJSON requires closed rings, so we always emit all points including closing duplicate
+            for (const auto& point : current_ring) {
+                callback(user_data, 1, point.first, point.second);
+            }
+        }
+        
+        callback(user_data, 2, 0, 0); // END_RING
+        current_ring.clear();
     }
 
     // Point geometry handlers
@@ -638,17 +733,25 @@ struct GeoJsonHandler {
 
     // Polygon ring handlers
     void ring_begin(uint32_t /*count*/) {
-        callback(user_data, 0, 0, 0); // BEGIN_RING
+        is_polygon_ring = true;
+        current_ring.clear();
     }
 
     void ring_point(const vtzero::point& p) {
         double lon, lat;
         project_point(p.x, p.y, lon, lat);
-        callback(user_data, 1, lon, lat); // POINT
+        current_ring.push_back(std::make_pair(lon, lat));
     }
 
-    void ring_end(vtzero::ring_type /*rt*/) {
-        callback(user_data, 2, 0, 0); // END_RING
+    void ring_end(vtzero::ring_type rt) {
+        is_polygon_ring = false;
+        // Skip invalid rings (zero area)
+        if (rt == vtzero::ring_type::invalid) {
+            current_ring.clear();
+            return;
+        }
+        bool is_outer = (rt == vtzero::ring_type::outer);
+        emit_ring(is_outer);
     }
 };
 
