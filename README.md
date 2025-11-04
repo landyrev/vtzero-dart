@@ -23,7 +23,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  vtzero_dart: ^0.0.1
+  vtzero_dart: ^0.0.2
 ```
 
 Then run:
