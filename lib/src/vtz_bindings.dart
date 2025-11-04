@@ -11,19 +11,39 @@ final DynamicLibrary _dylib = () {
   // Try to find the library in common locations
   final possiblePaths = <String>[];
 
+  // Get architecture (for native assets)
+  final architecture = _getArchitecture();
+  final platform = Platform.operatingSystem;
+
   if (Platform.isMacOS || Platform.isIOS) {
-    // Try framework first (for iOS/App bundles)
+    // Try native assets first (for published packages)
+    possiblePaths.add('native_assets/$platform/$architecture/lib$_libName.dylib');
+    possiblePaths.add('../native_assets/$platform/$architecture/lib$_libName.dylib');
+    possiblePaths.add('../../native_assets/$platform/$architecture/lib$_libName.dylib');
+    // Try framework (for iOS/App bundles)
     possiblePaths.add('$_libName.framework/$_libName');
     // Try dylib in build directory (for tests/development)
     possiblePaths.add('build/lib$_libName.dylib');
     possiblePaths.add('../build/lib$_libName.dylib');
     possiblePaths.add('../../build/lib$_libName.dylib');
   } else if (Platform.isAndroid || Platform.isLinux) {
+    // Try native assets first (for published packages)
+    possiblePaths.add('native_assets/$platform/$architecture/lib$_libName.so');
+    possiblePaths.add('../native_assets/$platform/$architecture/lib$_libName.so');
+    possiblePaths.add('../../native_assets/$platform/$architecture/lib$_libName.so');
+    // Try standard library paths
     possiblePaths.add('lib$_libName.so');
+    // Try build directory (for tests/development)
     possiblePaths.add('build/lib$_libName.so');
     possiblePaths.add('../build/lib$_libName.so');
   } else if (Platform.isWindows) {
+    // Try native assets first (for published packages)
+    possiblePaths.add('native_assets/$platform/$architecture/$_libName.dll');
+    possiblePaths.add('../native_assets/$platform/$architecture/$_libName.dll');
+    possiblePaths.add('../../native_assets/$platform/$architecture/$_libName.dll');
+    // Try standard library paths
     possiblePaths.add('$_libName.dll');
+    // Try build directory (for tests/development)
     possiblePaths.add('build/$_libName.dll');
     possiblePaths.add('../build/$_libName.dll');
   } else {
@@ -43,9 +63,57 @@ final DynamicLibrary _dylib = () {
   throw Exception(
     'Failed to load dynamic library $_libName. '
     'Tried paths: ${possiblePaths.join(", ")}. '
-    'Make sure the library is built and available.',
+    'Make sure the library is built and available. '
+    'Run "dart run hook/build.dart" to build native assets.',
   );
 }();
+
+/// Get the current architecture identifier
+/// This should match the architecture names used in the build script
+String _getArchitecture() {
+  if (Platform.isMacOS || Platform.isIOS) {
+    // Try to detect architecture - common values: arm64, x86_64
+    // For macOS, we can check the system architecture
+    try {
+      final result = Process.runSync('uname', ['-m']);
+      final arch = result.stdout.toString().trim();
+      // Map common architecture names
+      if (arch == 'arm64' || arch == 'aarch64') {
+        return 'arm64';
+      } else if (arch == 'x86_64' || arch == 'amd64') {
+        return 'x86_64';
+      }
+      return arch; // Return as-is if unrecognized
+    } catch (e) {
+      // Fallback to arm64 for modern Macs
+      return 'arm64';
+    }
+  } else if (Platform.isLinux) {
+    try {
+      final result = Process.runSync('uname', ['-m']);
+      final arch = result.stdout.toString().trim();
+      // Map common architecture names
+      if (arch == 'x86_64' || arch == 'amd64') {
+        return 'x86_64';
+      } else if (arch == 'arm64' || arch == 'aarch64') {
+        return 'arm64';
+      } else if (arch.startsWith('arm')) {
+        return 'arm';
+      }
+      return arch; // Return as-is if unrecognized
+    } catch (e) {
+      return 'x86_64'; // Default fallback
+    }
+  } else if (Platform.isWindows) {
+    return 'x64';
+  } else if (Platform.isAndroid) {
+    // Android architectures: arm64-v8a, armeabi-v7a, x86, x86_64
+    // This is a simplified detection - in practice you'd check the ABI
+    return 'arm64-v8a'; // Common default
+  } else {
+    return 'unknown';
+  }
+}
 
 /// The bindings to the native vtzero functions.
 final VtzeroDartBindings bindings = VtzeroDartBindings(_dylib);

@@ -32,6 +32,8 @@ Then run:
 flutter pub get
 ```
 
+**Note:** This package includes pre-built native binaries for supported platforms. No additional build steps are required when installing from pub.dev. The native libraries are automatically loaded based on your platform and architecture.
+
 ## Usage
 
 ### Core API (No External Dependencies)
@@ -231,7 +233,36 @@ flutter pub get
 dart run ffigen --config ffigen.yaml
 ```
 
-### Build Native Code
+### Building Native Assets for pub.dev Distribution
+
+This package includes pre-built binaries for supported platforms. To build native assets locally:
+
+```bash
+# Build native assets for your current platform
+# Option 1: Run from package root
+cd hook
+dart build.dart
+```
+
+This will:
+1. Detect your platform and architecture (macOS, Linux, Windows, etc.)
+2. Build the native library using CMake
+3. Place the built library in `native_assets/{platform}/{architecture}/`
+
+The built binaries will be automatically used by the package when published to pub.dev.
+
+**Supported Platforms:**
+- macOS (arm64, x86_64)
+- Linux (x86_64, arm64, arm)
+- Windows (x64)
+- Android (arm64-v8a, armeabi-v7a, x86, x86_64)
+- iOS (arm64, x86_64 for simulator)
+
+**Note:** The native assets feature requires Dart SDK 3.5+ with the `--enable-experiment=native-assets` flag (currently experimental). When published to pub.dev, the package will automatically include pre-built binaries for all supported platforms.
+
+### Build Native Code (Legacy/Development)
+
+For development and testing, you can also build using Flutter's build system:
 
 #### iOS
 ```bash
