@@ -1,6 +1,6 @@
 name: vtzero_dart
 description: "A Dart/Flutter FFI wrapper around the vtzero C++ library for decoding Mapbox Vector Tiles (MVT) with native performance and cross-platform support."
-version: 0.0.9
+version: 0.0.10
 homepage: https://github.com/landyrev/vtzero-dart
 repository: https://github.com/landyrev/vtzero-dart
 
