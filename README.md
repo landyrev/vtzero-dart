@@ -23,7 +23,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  vtzero_dart: ^0.0.1
+  vtzero_dart: ^0.0.11
 ```
 
 Then run:
@@ -31,6 +31,8 @@ Then run:
 ```bash
 flutter pub get
 ```
+
+**Note:** This package includes pre-built native binaries for supported platforms. No additional build steps are required when installing from pub.dev. The native libraries are automatically loaded based on your platform and architecture.
 
 ## Usage
 
@@ -231,7 +233,67 @@ flutter pub get
 dart run ffigen --config ffigen.yaml
 ```
 
-### Build Native Code
+### Building Native Libraries for Distribution
+
+This package includes pre-built binaries for supported platforms. For Android and iOS, Flutter's plugin system automatically builds the native code. For desktop platforms (macOS, Linux, Windows), you can build binaries locally:
+
+```bash
+# Build for current platform only (default)
+dart scripts/build_native.dart
+
+# Build for all supported platforms (macOS, Linux, Windows, iOS, Android)
+dart scripts/build_native.dart --all
+# or
+dart scripts/build_native.dart -a
+
+# Build for specific platform(s)
+dart scripts/build_native.dart --platform macos
+dart scripts/build_native.dart --platform ios
+dart scripts/build_native.dart --platform android
+dart scripts/build_native.dart --platform linux --platform windows
+# or
+dart scripts/build_native.dart -p macos -p ios -p android
+```
+
+**Platform-Specific Notes:**
+
+**iOS:**
+- Can only be built on macOS (requires Xcode)
+- Builds for both `arm64` (device) and `x86_64` (simulator) architectures
+- Uses CMake with iOS toolchain configuration
+
+**Android:**
+- Can be built on macOS, Linux, or Windows
+- Requires Android NDK (set `ANDROID_NDK_HOME` environment variable)
+- Builds for: `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`
+- Minimum API level: 24 (Android 7.0+)
+
+**Cross-Compilation:**
+- macOS can build for: macOS, iOS
+- Linux can build for: Linux (and Android if NDK is available)
+- Windows can build for: Windows (and Android if NDK is available)
+- On macOS with Apple Silicon, you can build for both `arm64` and `x86_64` architectures
+- For true multi-platform builds, use CI/CD pipelines with multiple runners
+
+This will:
+1. Detect your platform and architecture (macOS, Linux, Windows, etc.)
+2. Build the native library using CMake
+3. Place the built library in `lib/native/{platform}/{architecture}/`
+
+**Note:** Android and iOS libraries are automatically built by Flutter's plugin system (`ffiPlugin: true`). The build script is primarily for desktop platforms or when you need to distribute pre-built binaries.
+
+**Supported Platforms:**
+- macOS (arm64, x86_64)
+- Linux (x86_64, arm64, arm)
+- Windows (x64)
+- Android (arm64-v8a, armeabi-v7a, x86, x86_64)
+- iOS (arm64, x86_64 for simulator)
+
+**Note:** This package does not require the native-assets experiment. Android and iOS libraries are built automatically by Flutter's plugin system. Desktop platforms can use pre-built binaries placed in `lib/native/` or build from source.
+
+### Build Native Code (Legacy/Development)
+
+For development and testing, you can also build using Flutter's build system:
 
 #### iOS
 ```bash

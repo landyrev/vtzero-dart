@@ -590,8 +590,12 @@ struct GeoJsonHandler {
     double x0;
     double y0;
 
+    // For polygon rings: collect points and fix winding order
+    std::vector<std::pair<double, double>> current_ring;
+    bool is_polygon_ring;
+
     GeoJsonHandler(GeoJsonCallback cb, void* data, uint32_t ext, int32_t tx, int32_t ty, uint32_t tz)
-        : callback(cb), user_data(data), extent(ext), tile_x(tx), tile_y(ty), tile_z(tz) {
+        : callback(cb), user_data(data), extent(ext), tile_x(tx), tile_y(ty), tile_z(tz), is_polygon_ring(false) {
         size = static_cast<double>(extent) * (1 << tz); // extent * 2^z
         x0 = static_cast<double>(extent) * tile_x;
         y0 = static_cast<double>(extent) * tile_y;
@@ -604,6 +608,113 @@ struct GeoJsonHandler {
         double y2 = 180.0 - (y + y0) * 360.0 / size;
         lon = (x + x0) * 360.0 / size - 180.0;
         lat = 360.0 / M_PI * atan(exp(y2 * M_PI / 180.0)) - 90.0;
+    }
+
+    // Calculate if ring is counter-clockwise using shoelace formula
+    // Implements https://en.wikipedia.org/wiki/Shoelace_formula
+    // Matches vector_tile package implementation:
+    // for (var i = 0, j = ringLength - 1; i < ringLength; j = i++) {
+    //   sum += (ring[i][0] - ring[j][0]) * (ring[i][1] + ring[j][1]);
+    // }
+    // Returns true if counter-clockwise (sum < 0), false if clockwise (sum >= 0)
+    bool is_counter_clockwise(const std::vector<std::pair<double, double>>& ring) {
+        if (ring.size() < 3) return true; // Default to counter-clockwise for invalid rings
+        
+        double sum = 0.0;
+        size_t n = ring.size();
+        size_t effective_n = n;
+        
+        // Check if ring is closed (first point == last point)
+        // Use epsilon comparison for floating point coordinates
+        const double epsilon = 1e-10;
+        if (n > 3 && 
+            std::abs(ring[0].first - ring[n-1].first) < epsilon &&
+            std::abs(ring[0].second - ring[n-1].second) < epsilon) {
+            effective_n = n - 1; // Skip duplicate closing point
+        }
+        
+        // Match vector_tile implementation: j starts at last index, then j = i, i increments
+        // This means: j is previous index, i is current index
+        // Formula: (current.x - previous.x) * (current.y + previous.y)
+        for (size_t i = 0, j = effective_n - 1; i < effective_n; j = i++) {
+            const double& current_x = ring[i].first;
+            const double& current_y = ring[i].second;
+            const double& previous_x = ring[j].first;
+            const double& previous_y = ring[j].second;
+            
+            sum += (current_x - previous_x) * (current_y + previous_y);
+        }
+        
+        // Counter-clockwise if sum < 0 (matches vector_tile)
+        return sum < 0.0;
+    }
+
+    // Emit ring points, reversing if needed to follow GeoJSON right-hand rule
+    void emit_ring(bool is_outer) {
+        if (current_ring.size() < 3) {
+            // Invalid ring, skip it
+            current_ring.clear();
+            return;
+        }
+
+        // Check if ring is closed (first point == last point)
+        // Use epsilon comparison for floating point coordinates
+        const double epsilon = 1e-10;
+        bool is_closed = (current_ring.size() > 3 &&
+                         std::abs(current_ring[0].first - current_ring[current_ring.size()-1].first) < epsilon &&
+                         std::abs(current_ring[0].second - current_ring[current_ring.size()-1].second) < epsilon);
+        
+        // Ensure ring is closed for GeoJSON (first point == last point)
+        // GeoJSON spec requires all rings to be closed
+        if (!is_closed && current_ring.size() >= 2) {
+            // Add closing point if not already closed
+            current_ring.push_back(current_ring[0]);
+            is_closed = true;
+        }
+        
+        // Check if ring is counter-clockwise using the validation library's formula
+        // sum += (next.x - current.x) * (next.y + current.y)
+        // Counter-clockwise if sum < 0
+        bool is_ccw = is_counter_clockwise(current_ring);
+        
+        // All rings must be counter-clockwise according to the validation library
+        // If the ring is not counter-clockwise, reverse it
+        bool should_reverse = !is_ccw;
+
+        // Emit ring
+        callback(user_data, 0, 0, 0); // BEGIN_RING
+        
+        if (should_reverse) {
+            // Reverse the ring to fix winding order
+            // For a closed ring [A, B, C, A], we want [A, C, B, A]
+            // We need to reverse all points except keep the first point as both start and end
+            if (is_closed && current_ring.size() > 1) {
+                // Emit first point (which will be both start and end)
+                callback(user_data, 1, current_ring[0].first, current_ring[0].second);
+                // Reverse and emit all points except the first and last (duplicate)
+                // Go from second-to-last down to second
+                for (size_t i = current_ring.size() - 2; i >= 1; --i) {
+                    callback(user_data, 1, current_ring[i].first, current_ring[i].second);
+                    if (i == 1) break; // Prevent underflow
+                }
+                // Close the ring with first point again
+                callback(user_data, 1, current_ring[0].first, current_ring[0].second);
+            } else {
+                // Ring not closed, reverse all points
+                for (auto it = current_ring.rbegin(); it != current_ring.rend(); ++it) {
+                    callback(user_data, 1, it->first, it->second);
+                }
+            }
+        } else {
+            // Emit points in original order
+            // GeoJSON requires closed rings, so we always emit all points including closing duplicate
+            for (const auto& point : current_ring) {
+                callback(user_data, 1, point.first, point.second);
+            }
+        }
+        
+        callback(user_data, 2, 0, 0); // END_RING
+        current_ring.clear();
     }
 
     // Point geometry handlers
@@ -638,17 +749,25 @@ struct GeoJsonHandler {
 
     // Polygon ring handlers
     void ring_begin(uint32_t /*count*/) {
-        callback(user_data, 0, 0, 0); // BEGIN_RING
+        is_polygon_ring = true;
+        current_ring.clear();
     }
 
     void ring_point(const vtzero::point& p) {
         double lon, lat;
         project_point(p.x, p.y, lon, lat);
-        callback(user_data, 1, lon, lat); // POINT
+        current_ring.push_back(std::make_pair(lon, lat));
     }
 
-    void ring_end(bool /*is_outer*/) {
-        callback(user_data, 2, 0, 0); // END_RING
+    void ring_end(vtzero::ring_type rt) {
+        is_polygon_ring = false;
+        // Skip invalid rings (zero area)
+        if (rt == vtzero::ring_type::invalid) {
+            current_ring.clear();
+            return;
+        }
+        bool is_outer = (rt == vtzero::ring_type::outer);
+        emit_ring(is_outer);
     }
 };
 
