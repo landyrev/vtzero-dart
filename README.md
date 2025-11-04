@@ -238,11 +238,42 @@ dart run ffigen --config ffigen.yaml
 This package includes pre-built binaries for supported platforms. To build native assets locally:
 
 ```bash
-# Build native assets for your current platform
-# Option 1: Run from package root
-cd hook
-dart build.dart
+# Build for current platform only (default)
+dart hook/build.dart
+
+# Build for all supported platforms (macOS, Linux, Windows, iOS, Android)
+dart hook/build.dart --all
+# or
+dart hook/build.dart -a
+
+# Build for specific platform(s)
+dart hook/build.dart --platform macos
+dart hook/build.dart --platform ios
+dart hook/build.dart --platform android
+dart hook/build.dart --platform linux --platform windows
+# or
+dart hook/build.dart -p macos -p ios -p android
 ```
+
+**Platform-Specific Notes:**
+
+**iOS:**
+- Can only be built on macOS (requires Xcode)
+- Builds for both `arm64` (device) and `x86_64` (simulator) architectures
+- Uses CMake with iOS toolchain configuration
+
+**Android:**
+- Can be built on macOS, Linux, or Windows
+- Requires Android NDK (set `ANDROID_NDK_HOME` environment variable)
+- Builds for: `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`
+- Minimum API level: 24 (Android 7.0+)
+
+**Cross-Compilation:**
+- macOS can build for: macOS, iOS
+- Linux can build for: Linux (and Android if NDK is available)
+- Windows can build for: Windows (and Android if NDK is available)
+- On macOS with Apple Silicon, you can build for both `arm64` and `x86_64` architectures
+- For true multi-platform builds, use CI/CD pipelines with multiple runners
 
 This will:
 1. Detect your platform and architecture (macOS, Linux, Windows, etc.)
