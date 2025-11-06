@@ -31,6 +31,7 @@ jobs:
         with:
           flutter-version: '3.35.0'
           channel: 'stable'
+          cache: true
 
       - name: Install CMake (macOS)
         if: matrix.runner == 'macos-latest'

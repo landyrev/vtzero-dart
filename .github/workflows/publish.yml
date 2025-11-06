@@ -34,6 +34,10 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "Found tag: $TAG_NAME, version: $VERSION"
 
+      - name: Checkout tag
+        run: |
+          git checkout ${{ steps.version.outputs.tag_name }}
+
       - name: Download native binaries archive from release
         uses: actions/github-script@v7
         with:
@@ -84,13 +88,15 @@ jobs:
           tar -xzf native-binaries-${{ steps.version.outputs.version }}.tar.gz -C lib/native
           echo "Extracted native binaries to lib/native"
 
-      - name: Setup Dart SDK
-        uses: dart-lang/setup-dart@v1
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          flutter-version: '3.35.0'
+          channel: 'stable'
+          cache: true
 
       - name: Publish to pub.dev
         run: |
-          dart pub publish --dry-run
-          dart pub publish
+          flutter pub publish --dry-run
+          flutter pub publish
 
