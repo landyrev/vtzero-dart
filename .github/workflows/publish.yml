@@ -34,6 +34,10 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "Found tag: $TAG_NAME, version: $VERSION"
 
+      - name: Checkout tag
+        run: |
+          git checkout ${{ steps.version.outputs.tag_name }}
+
       - name: Download native binaries archive from release
         uses: actions/github-script@v7
         with:
