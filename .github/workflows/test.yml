@@ -1,8 +1,11 @@
-name: CI
+name: Unit Tests
 
 on:
   pull_request:
     branches: ['*']
+  push:
+    branches:
+      - main
 
 jobs:
   test:
