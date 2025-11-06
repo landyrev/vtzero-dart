@@ -1,6 +1,5 @@
 // Optional compatibility layer for vector_tile package
 // Only import this if you need vector_tile API compatibility
-library vtzero_dart.vector_tile_adapter;
 
 import 'dart:typed_data';
 import 'package:fixnum/fixnum.dart';
@@ -18,7 +17,7 @@ class VectorTileFeatureVtzero extends vt.VectorTileFeature {
 
   VectorTileFeatureVtzero({
     required List<List<List<double>>> Function(int x, int y, int z)
-    geometryDecoder,
+        geometryDecoder,
     required VtzGeometryType geometryTypeVtz,
     required int super.extent,
     required super.id,
@@ -27,8 +26,8 @@ class VectorTileFeatureVtzero extends vt.VectorTileFeature {
     required super.geometryList,
     required super.keys,
     required super.values,
-  }) : _geometryDecoder = geometryDecoder,
-       _geometryTypeVtz = geometryTypeVtz;
+  })  : _geometryDecoder = geometryDecoder,
+        _geometryTypeVtz = geometryTypeVtz;
 
   /// Optimized toGeoJson using native code
   @override
@@ -63,34 +62,30 @@ class VectorTileFeatureVtzero extends vt.VectorTileFeature {
         }
         final point = coords.first.first;
         return geo.GeoJsonPoint(
-              geometry: geom.GeometryPoint(coordinates: point),
-              properties: properties,
-            )
-            as T;
+          geometry: geom.GeometryPoint(coordinates: point),
+          properties: properties,
+        ) as T;
 
       case VtzGeometryType.linestring:
         if (coords.isEmpty) return null;
         if (coords.length == 1) {
           return geo.GeoJsonLineString(
-                geometry: geom.GeometryLineString(coordinates: coords.first),
-                properties: properties,
-              )
-              as T;
+            geometry: geom.GeometryLineString(coordinates: coords.first),
+            properties: properties,
+          ) as T;
         } else {
           return geo.GeoJsonMultiLineString(
-                geometry: geom.GeometryMultiLineString(coordinates: coords),
-                properties: properties,
-              )
-              as T;
+            geometry: geom.GeometryMultiLineString(coordinates: coords),
+            properties: properties,
+          ) as T;
         }
 
       case VtzGeometryType.polygon:
         if (coords.isEmpty) return null;
         return geo.GeoJsonPolygon(
-              geometry: geom.GeometryPolygon(coordinates: coords),
-              properties: properties,
-            )
-            as T;
+          geometry: geom.GeometryPolygon(coordinates: coords),
+          properties: properties,
+        ) as T;
 
       default:
         return null;

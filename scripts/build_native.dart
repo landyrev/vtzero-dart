@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 
 void main(List<String> args) async {
@@ -27,9 +29,8 @@ void main(List<String> args) async {
   // Determine package root - if running from hook/ directory, go up one level
   // If running from package root, use current directory
   final currentDir = Directory.current.absolute;
-  final packageRoot = currentDir.path.endsWith('hook')
-      ? currentDir.parent
-      : currentDir;
+  final packageRoot =
+      currentDir.path.endsWith('hook') ? currentDir.parent : currentDir;
   final packageRootPath = packageRoot.path;
   final packageRootUri = packageRoot.uri;
 
@@ -117,8 +118,7 @@ Future<bool> _buildForPlatform({
       }
     } else if (platform == 'android') {
       // Android requires NDK
-      final ndkPath =
-          Platform.environment['ANDROID_NDK_HOME'] ??
+      final ndkPath = Platform.environment['ANDROID_NDK_HOME'] ??
           Platform.environment['ANDROID_NDK_ROOT'] ??
           Platform.environment['ANDROID_NDK'];
       if (ndkPath == null || !await Directory(ndkPath).exists()) {
@@ -185,12 +185,15 @@ Future<bool> _buildForPlatform({
       continue;
     }
 
-    final buildResult = await Process.run('cmake', [
-      '--build',
-      buildDir,
-      '--config',
-      'Release',
-    ], workingDirectory: packageRootPath);
+    final buildResult = await Process.run(
+        'cmake',
+        [
+          '--build',
+          buildDir,
+          '--config',
+          'Release',
+        ],
+        workingDirectory: packageRootPath);
 
     if (buildResult.exitCode != 0) {
       print('  CMake build failed for $platform ($architecture):');

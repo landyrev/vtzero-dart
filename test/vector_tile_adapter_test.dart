@@ -95,7 +95,8 @@ void main() {
     test('Point geometry conversion', () {
       final bytes = _readFixtureBytes('002');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson = feature.toGeoJson<geo.GeoJsonPoint>(
         x: 0,
@@ -113,7 +114,8 @@ void main() {
     test('Point geometry with ID', () {
       final bytes = _readFixtureBytes('017');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson = feature.toGeoJson<geo.GeoJsonPoint>(
         x: 0,
@@ -128,7 +130,8 @@ void main() {
     test('Linestring geometry conversion', () {
       final bytes = _readFixtureBytes('018');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson = feature.toGeoJson<geo.GeoJsonLineString>(
         x: 0,
@@ -148,7 +151,8 @@ void main() {
     test('Multilinestring geometry conversion', () {
       final bytes = _readFixtureBytes('021');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson = feature.toGeoJson<geo.GeoJsonMultiLineString>(
         x: 0,
@@ -168,7 +172,8 @@ void main() {
     test('Polygon geometry conversion', () {
       final bytes = _readFixtureBytes('019');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson = feature.toGeoJson<geo.GeoJsonPolygon>(
         x: 0,
@@ -187,7 +192,8 @@ void main() {
     test('Multipolygon geometry conversion', () {
       final bytes = _readFixtureBytes('022');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson = feature.toGeoJson<geo.GeoJsonPolygon>(
         x: 0,
@@ -204,7 +210,8 @@ void main() {
     test('Multipoint geometry conversion', () {
       final bytes = _readFixtureBytes('020');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson = feature.toGeoJson<geo.GeoJsonPoint>(
         x: 0,
@@ -220,7 +227,8 @@ void main() {
     test('Unknown geometry type returns null', () {
       final bytes = _readFixtureBytes('016');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson = feature.toGeoJson<geo.GeoJson>(
         x: 0,
@@ -234,7 +242,8 @@ void main() {
     test('toGeoJson with different tile coordinates', () {
       final bytes = _readFixtureBytes('002');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       // Test with different tile coordinates
       final geoJson1 = feature.toGeoJson<geo.GeoJsonPoint>(
@@ -525,7 +534,8 @@ void main() {
       // For now, we test that unknown geometry type returns null
       final bytes = _readFixtureBytes('016');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson = feature.toGeoJson<geo.GeoJson>(
         x: 0,
@@ -539,7 +549,8 @@ void main() {
     test('Properties are lazily decoded', () {
       final bytes = _readFixtureBytes('032');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       // Properties should be null before toGeoJson is called
       expect(feature.properties, isNull);
@@ -561,7 +572,8 @@ void main() {
     test('Multiple calls to toGeoJson reuse cached properties', () {
       final bytes = _readFixtureBytes('032');
       final vectorTile = VectorTileVtzero.fromBytes(bytes: bytes);
-      final feature = vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
+      final feature =
+          vectorTile.layers[0].features[0] as VectorTileFeatureVtzero;
 
       final geoJson1 = feature.toGeoJson<geo.GeoJsonPoint>(
         x: 0,
@@ -588,7 +600,7 @@ void main() {
 Uint8List _readFixtureBytes(String fixtureNumber) {
   final possiblePaths = [
     'test/fixtures/$fixtureNumber/tile.mvt',
-    Directory.current.path + '/test/fixtures/$fixtureNumber/tile.mvt',
+    '${Directory.current.path}/test/fixtures/$fixtureNumber/tile.mvt',
   ];
 
   File? file;
@@ -609,4 +621,3 @@ Uint8List _readFixtureBytes(String fixtureNumber) {
 
   return file.readAsBytesSync();
 }
-

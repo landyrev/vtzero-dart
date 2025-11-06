@@ -1,5 +1,4 @@
 // Core vtzero API - no external dependencies
-library vtzero_dart;
 
 export 'src/vtz_tile.dart';
 export 'src/vtz_layer.dart';
