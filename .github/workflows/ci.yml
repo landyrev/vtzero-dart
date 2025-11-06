@@ -5,42 +5,9 @@ on:
     branches: ['*']
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.35.0'
-          channel: 'stable'
-
-      - name: Install CMake
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake build-essential
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build native libraries
-        run: dart scripts/build_native.dart --platform linux
-
-      - name: Upload native binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: native-binaries
-          path: lib/native
-          retention-days: 1
-
   test:
     runs-on: ubuntu-latest
-    needs: build
+    needs: combine_build_artifacts
     
     steps:
       - name: Checkout repository
@@ -60,7 +27,7 @@ jobs:
       - name: Download native binaries
         uses: actions/download-artifact@v4
         with:
-          name: native-binaries
+          name: native-binaries-all
           path: lib/native
 
       - name: Run tests
@@ -97,4 +64,106 @@ jobs:
           path: |
             test_output.txt
           retention-days: 30
+
+  build_all:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-latest
+            platforms: [macos, ios]
+          - runner: ubuntu-latest
+            platforms: [linux, android]
+          # - runner: windows-latest
+          #   platforms: [windows]
+    runs-on: ${{ matrix.runner }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: 'stable'
+
+      - name: Install CMake (macOS)
+        if: matrix.runner == 'macos-latest'
+        run: |
+          brew install cmake
+
+      - name: Install CMake and build tools (Linux)
+        if: matrix.runner == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Install Android NDK (Linux)
+        id: setup-ndk
+        if: matrix.runner == 'ubuntu-latest'
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+
+      # - name: Install CMake (Windows)
+      #   if: matrix.runner == 'windows-latest'
+      #   uses: microsoft/setup-cmake@v1
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build native libraries (Unix)
+        if: matrix.runner != 'windows-latest'
+        shell: bash
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          platforms='${{ toJson(matrix.platforms) }}'
+          # Parse JSON array: remove brackets and quotes, split by comma
+          echo "$platforms" | sed 's/\[//;s/\]//;s/"//g' | tr ',' '\n' | while read -r platform; do
+            platform=$(echo "$platform" | xargs)  # trim whitespace
+            if [ -n "$platform" ]; then
+              echo "Building for platform: $platform"
+              dart scripts/build_native.dart --platform "$platform"
+            fi
+          done
+
+      # - name: Build native libraries (Windows)
+      #   if: matrix.runner == 'windows-latest'
+      #   shell: powershell
+      #   run: |
+      #     $platforms = ${{ toJson(matrix.platforms) }}
+      #     foreach ($platform in $platforms) {
+      #       Write-Host "Building for platform: $platform"
+      #       dart scripts/build_native.dart --platform $platform
+      #     }
+
+      - name: Upload native binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-binaries-${{ matrix.runner }}
+          path: lib/native
+          retention-days: 1
+
+  combine_build_artifacts:
+    needs: build_all
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Download all native binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-binaries-*
+          merge-multiple: true
+          path: lib/native
+
+      - name: Upload combined native binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-binaries-all
+          path: lib/native
+          retention-days: 1
 
