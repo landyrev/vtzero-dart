@@ -84,13 +84,15 @@ jobs:
           tar -xzf native-binaries-${{ steps.version.outputs.version }}.tar.gz -C lib/native
           echo "Extracted native binaries to lib/native"
 
-      - name: Setup Dart SDK
-        uses: dart-lang/setup-dart@v1
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          flutter-version: '3.35.0'
+          channel: 'stable'
+          cache: true
 
       - name: Publish to pub.dev
         run: |
-          dart pub publish --dry-run
-          dart pub publish
+          flutter pub publish --dry-run
+          flutter pub publish
 
