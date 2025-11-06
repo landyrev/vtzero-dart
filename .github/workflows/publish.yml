@@ -1,12 +1,14 @@
 name: Publish
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
 
 jobs:
   publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       id-token: write # Required for authentication using OIDC
       contents: read
@@ -14,14 +16,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
 
       - name: Extract version from tag
         id: version
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
+          # Get the latest tag that matches v* pattern
+          TAG_NAME=$(git describe --tags --match 'v*' --abbrev=0)
+          if [ -z "$TAG_NAME" ]; then
+            echo "Error: No tag matching v* pattern found"
+            exit 1
+          fi
           VERSION=${TAG_NAME#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Found tag: $TAG_NAME, version: $VERSION"
 
       - name: Download native binaries archive from release
         uses: actions/github-script@v7
