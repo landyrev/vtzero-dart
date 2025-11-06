@@ -1,16 +1,9 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version_bump:
-        description: 'Version bump type'
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build_native:
@@ -23,14 +16,38 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write # Required for authentication using OIDC
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
           submodules: true
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Get the tag name from the ref (refs/tags/v1.2.3 -> v1.2.3)
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          if [ -z "$TAG_NAME" ]; then
+            echo "Error: Could not extract tag name from GITHUB_REF: $GITHUB_REF"
+            exit 1
+          fi
+          VERSION=${TAG_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Found tag: $TAG_NAME, version: $VERSION"
+
+      - name: Checkout tag
+        run: |
+          git checkout ${{ steps.version.outputs.tag_name }}
+
+      - name: Bump version in pubspec.yaml to match tag
+        run: |
+          sed -i "s/^version: .*/version: ${{ steps.version.outputs.version }}/" pubspec.yaml
+          echo "Updated pubspec.yaml to version ${{ steps.version.outputs.version }}:"
+          grep "^version:" pubspec.yaml
 
       - name: Download native binaries
         uses: actions/download-artifact@v4
@@ -38,72 +55,12 @@ jobs:
           name: native-binaries-all
           path: lib/native
 
-      - name: Determine new version
-        id: version
-        run: |
-          CURRENT_VERSION=$(grep -E '^version:' pubspec.yaml | sed 's/version: //' | xargs)
-          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-          
-          IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
-          MAJOR="${VERSION_PARTS[0]}"
-          MINOR="${VERSION_PARTS[1]}"
-          PATCH="${VERSION_PARTS[2]}"
-          
-          BUMP_TYPE="${{ inputs.version_bump }}"
-          
-          case "$BUMP_TYPE" in
-            patch)
-              PATCH=$((PATCH + 1))
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              ;;
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
-          esac
-          
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "Bumping version from $CURRENT_VERSION to $NEW_VERSION ($BUMP_TYPE)"
-          echo "tag_name=v$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Bump version in pubspec.yaml
-        run: |
-          sed -i "s/^version: .*/version: ${{ steps.version.outputs.new_version }}/" pubspec.yaml
-          echo "Updated pubspec.yaml:"
-          grep "^version:" pubspec.yaml
-
-      - name: Configure git
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-
-      - name: Commit version bump
-        run: |
-          git add pubspec.yaml
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
-
-      - name: Create git tag
-        run: |
-          git tag -a "${{ steps.version.outputs.tag_name }}" -m "Release ${{ steps.version.outputs.new_version }}"
-
-      - name: Push changes and tag
-        run: |
-          # Extract branch name from ref (refs/heads/branch-name -> branch-name)
-          BRANCH=${GITHUB_REF#refs/heads/}
-          git push origin "$BRANCH"
-          git push origin "${{ steps.version.outputs.tag_name }}"
-
       - name: Create native binaries archive
         run: |
           cd lib/native
-          tar -czf ../native-binaries-${{ steps.version.outputs.new_version }}.tar.gz .
+          tar -czf ../native-binaries-${{ steps.version.outputs.version }}.tar.gz .
           cd ../..
-          echo "archive_path=lib/native-binaries-${{ steps.version.outputs.new_version }}.tar.gz" >> $GITHUB_OUTPUT
+          echo "archive_path=lib/native-binaries-${{ steps.version.outputs.version }}.tar.gz" >> $GITHUB_OUTPUT
         id: archive
 
       - name: Create GitHub Release
@@ -111,7 +68,7 @@ jobs:
         with:
           script: |
             const tagName = '${{ steps.version.outputs.tag_name }}';
-            const version = '${{ steps.version.outputs.new_version }}';
+            const version = '${{ steps.version.outputs.version }}';
             const archivePath = '${{ steps.archive.outputs.archive_path }}';
             const fs = require('fs');
             
@@ -155,3 +112,14 @@ jobs:
                 'content-length': archiveData.length
               }
             });
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Publish to pub.dev
+        run: |
+          flutter pub publish --force
