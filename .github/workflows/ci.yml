@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ['*']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    needs: build_all
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Download native binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: native-binaries-all
+          path: lib/native
+
+      - name: Run tests
+        id: test
+        run: |
+          flutter test --reporter expanded > test_output.txt 2>&1
+          TEST_EXIT_CODE=$?
+          echo "exit_code=$TEST_EXIT_CODE" >> $GITHUB_OUTPUT
+          cat test_output.txt
+          exit $TEST_EXIT_CODE
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f test_output.txt ]; then
+            echo "### Test Output" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            tail -100 test_output.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.test.outputs.exit_code }}" == "0" ]; then
+            echo "✅ **All tests passed!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Tests failed with exit code: ${{ steps.test.outputs.exit_code }}**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test_output.txt
+          retention-days: 30
+
+  build_all:
+    uses: ./.github/workflows/build-native.yml
+    with:
+      artifact_retention_days: 1
+

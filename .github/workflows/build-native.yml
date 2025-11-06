@@ -1,0 +1,98 @@
+name: Build Native Binaries
+
+on:
+  workflow_call:
+    inputs:
+      artifact_retention_days:
+        description: 'Number of days to retain artifacts'
+        required: false
+        type: number
+        default: 1
+
+jobs:
+  build_native:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-latest
+            platforms: [macos, ios]
+          - runner: ubuntu-latest
+            platforms: [linux, android]
+    runs-on: ${{ matrix.runner }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: 'stable'
+
+      - name: Install CMake (macOS)
+        if: matrix.runner == 'macos-latest'
+        run: |
+          brew install cmake
+
+      - name: Install CMake and build tools (Linux)
+        if: matrix.runner == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Install Android NDK (Linux)
+        id: setup-ndk
+        if: matrix.runner == 'ubuntu-latest'
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build native libraries (Unix)
+        if: matrix.runner != 'windows-latest'
+        shell: bash
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          platforms='${{ toJson(matrix.platforms) }}'
+          # Parse JSON array: remove brackets and quotes, split by comma
+          echo "$platforms" | sed 's/\[//;s/\]//;s/"//g' | tr ',' '\n' | while read -r platform; do
+            platform=$(echo "$platform" | xargs)  # trim whitespace
+            if [ -n "$platform" ]; then
+              echo "Building for platform: $platform"
+              dart scripts/build_native.dart --platform "$platform"
+            fi
+          done
+
+      - name: Upload native binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-binaries-${{ matrix.runner }}
+          path: lib/native
+          retention-days: ${{ inputs.artifact_retention_days }}
+
+  combine_build_artifacts:
+    needs: build_native
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Download all native binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-binaries-*
+          merge-multiple: true
+          path: lib/native
+
+      - name: Upload combined native binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-binaries-all
+          path: lib/native
+          retention-days: ${{ inputs.artifact_retention_days }}
+
