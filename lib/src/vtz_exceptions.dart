@@ -47,6 +47,3 @@ class VtzOutOfRangeException extends VtzException {
   @override
   String toString() => 'VtzOutOfRangeException: $message';
 }
-
-
-
