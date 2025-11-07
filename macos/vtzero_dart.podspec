@@ -35,7 +35,8 @@ A new Flutter FFI plugin project.
     'DEFINES_MODULE' => 'YES',
     'CLANG_CXX_LANGUAGE_STANDARD' => 'c++14',
     'CLANG_CXX_LIBRARY' => 'libc++',
-    'HEADER_SEARCH_PATHS' => '$(inherited) "${PODS_TARGET_SRCROOT}/../third_party/vtzero/include" "${PODS_TARGET_SRCROOT}/../third_party/protozero/include"'
+    'HEADER_SEARCH_PATHS' => '$(inherited) "${PODS_TARGET_SRCROOT}/../third_party/vtzero/include" "${PODS_TARGET_SRCROOT}/../third_party/protozero/include"',
+    'WARNING_CFLAGS' => '$(inherited) -Wno-documentation -Wno-documentation-deprecated-sync'
   }
   s.swift_version = '5.0'
 end
