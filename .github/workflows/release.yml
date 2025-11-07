@@ -209,5 +209,17 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Install Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          service_account_key: ${{ secrets.GOOGLE_CLOUD_SERVICE_ACCOUNT }}
+
+      - name: Authenticate with pub.dev using service account
+        run: |
+          gcloud auth print-identity-token \
+            --audiences=https://pub.dev \
+            --include-email \
+            | dart pub token add https://pub.dev
+
       - name: Publish to pub.dev
-        run: flutter pub publish --force
+        run: dart pub publish --force
