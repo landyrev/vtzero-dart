@@ -13,112 +13,112 @@ on:
           - major
 
 jobs:
-  build_native:
-    uses: ./.github/workflows/build-native.yml
-    with:
-      artifact_retention_days: 7
+  # build_native:
+  #   uses: ./.github/workflows/build-native.yml
+  #   with:
+  #     artifact_retention_days: 7
 
-  test:
-    needs: build_native
-    runs-on: ubuntu-latest
+  # test:
+  #   needs: build_native
+  #   runs-on: ubuntu-latest
     
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: true
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         submodules: true
 
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.35.0'
-          channel: 'stable'
+  #     - name: Install Flutter
+  #       uses: subosito/flutter-action@v2
+  #       with:
+  #         flutter-version: '3.35.0'
+  #         channel: 'stable'
 
-      - name: Install dependencies
-        run: flutter pub get
+  #     - name: Install dependencies
+  #       run: flutter pub get
 
-      - name: Download native binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: native-binaries-all
-          path: lib/native
+  #     - name: Download native binaries
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: native-binaries-all
+  #         path: lib/native
 
-      - name: Run tests
-        run: flutter test
+  #     - name: Run tests
+  #       run: flutter test
 
-  version_bump:
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      version: ${{ steps.version.outputs.new_version }}
-      tag_name: ${{ steps.version.outputs.tag_name }}
+  # version_bump:
+  #   needs: test
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: write
+  #   outputs:
+  #     version: ${{ steps.version.outputs.new_version }}
+  #     tag_name: ${{ steps.version.outputs.tag_name }}
     
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: true
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #         submodules: true
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+  #     - name: Configure Git
+  #       run: |
+  #         git config --global user.name "github-actions[bot]"
+  #         git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Read current version and calculate new version
-        id: version
-        run: |
-          CURRENT_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
-          echo "Current version: $CURRENT_VERSION"
+  #     - name: Read current version and calculate new version
+  #       id: version
+  #       run: |
+  #         CURRENT_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
+  #         echo "Current version: $CURRENT_VERSION"
           
-          IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
-          MAJOR=${VERSION_PARTS[0]}
-          MINOR=${VERSION_PARTS[1]}
-          PATCH=${VERSION_PARTS[2]}
+  #         IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+  #         MAJOR=${VERSION_PARTS[0]}
+  #         MINOR=${VERSION_PARTS[1]}
+  #         PATCH=${VERSION_PARTS[2]}
           
-          BUMP_TYPE="${{ github.event.inputs.version_bump }}"
+  #         BUMP_TYPE="${{ github.event.inputs.version_bump }}"
           
-          case "$BUMP_TYPE" in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              ;;
-            patch)
-              PATCH=$((PATCH + 1))
-              ;;
-          esac
+  #         case "$BUMP_TYPE" in
+  #           major)
+  #             MAJOR=$((MAJOR + 1))
+  #             MINOR=0
+  #             PATCH=0
+  #             ;;
+  #           minor)
+  #             MINOR=$((MINOR + 1))
+  #             PATCH=0
+  #             ;;
+  #           patch)
+  #             PATCH=$((PATCH + 1))
+  #             ;;
+  #         esac
           
-          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          TAG_NAME="v${NEW_VERSION}"
+  #         NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+  #         TAG_NAME="v${NEW_VERSION}"
           
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "New version: $NEW_VERSION"
-          echo "Tag name: $TAG_NAME"
+  #         echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+  #         echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+  #         echo "New version: $NEW_VERSION"
+  #         echo "Tag name: $TAG_NAME"
 
-      - name: Update version in pubspec.yaml
-        run: |
-          sed -i "s/^version: .*/version: ${{ steps.version.outputs.new_version }}/" pubspec.yaml
-          echo "Updated pubspec.yaml to version ${{ steps.version.outputs.new_version }}:"
-          grep "^version:" pubspec.yaml
+  #     - name: Update version in pubspec.yaml
+  #       run: |
+  #         sed -i "s/^version: .*/version: ${{ steps.version.outputs.new_version }}/" pubspec.yaml
+  #         echo "Updated pubspec.yaml to version ${{ steps.version.outputs.new_version }}:"
+  #         grep "^version:" pubspec.yaml
 
-      - name: Commit version bump
-        run: |
-          git add pubspec.yaml
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
-          git push
+  #     - name: Commit version bump
+  #       run: |
+  #         git add pubspec.yaml
+  #         git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
+  #         git push
 
-      - name: Create and push tag
-        run: |
-          git tag ${{ steps.version.outputs.tag_name }}
-          git push origin ${{ steps.version.outputs.tag_name }}
+  #     - name: Create and push tag
+  #       run: |
+  #         git tag ${{ steps.version.outputs.tag_name }}
+  #         git push origin ${{ steps.version.outputs.tag_name }}
 
   release:
     # needs: [version_bump, build_native]
@@ -212,11 +212,11 @@ jobs:
       - name: 'Authenticate with Google Cloud'
         uses: 'google-github-actions/auth@v3'
         with:
-          project_id: 'vernal-etching-157505'
-          workload_identity_provider: 'projects/51768648162/locations/global/workloadIdentityPools/github/providers/vtzero-dart'
-
-      - name: 'Install Google Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v3'
+          credentials_json: '${{ secrets.GOOGLE_CLOUD_SERVICE_ACCOUNT }}'
+          service_account: 'vtzero-dart-publisher@vernal-etching-157505.iam.gserviceaccount.com'
+          token_format: 'id_token'
+          id_token_audience: 'https://pub.dev'
+          id_token_include_email: 'true'
 
       - name: Authenticate with pub.dev using service account
         run: |
