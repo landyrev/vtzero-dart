@@ -209,10 +209,13 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - name: 'Authenticate with Google Cloud'
+        uses: 'google-github-actions/auth@v2'
         with:
-          service_account_key: ${{ secrets.GOOGLE_CLOUD_SERVICE_ACCOUNT }}
+          credentials_json: '${{ secrets.GOOGLE_CLOUD_SERVICE_ACCOUNT }}'
+
+      - name: 'Install Google Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
 
       - name: Authenticate with pub.dev using service account
         run: |
