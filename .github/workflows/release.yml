@@ -217,6 +217,7 @@ jobs:
           token_format: 'id_token'
           id_token_audience: 'https://pub.dev'
           id_token_include_email: 'true'
+          create_credentials_file: 'false'
 
       - name: Authenticate with pub.dev using service account
         run: |
