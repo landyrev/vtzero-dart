@@ -210,6 +210,7 @@ jobs:
           cache: true
 
       - name: 'Authenticate with Google Cloud'
+        id: 'auth'
         uses: 'google-github-actions/auth@v3'
         with:
           credentials_json: '${{ secrets.GOOGLE_CLOUD_SERVICE_ACCOUNT }}'
@@ -221,9 +222,7 @@ jobs:
 
       - name: Authenticate with pub.dev using service account
         run: |
-          gcloud auth print-identity-token \
-            --audiences=https://pub.dev \
-            | dart pub token add https://pub.dev
+          echo '${{ steps.auth.outputs.id_token }}' | dart pub token add https://pub.dev
 
       - name: Publish to pub.dev
         run: dart pub publish --force
