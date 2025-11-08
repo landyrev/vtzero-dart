@@ -17,19 +17,30 @@ A Dart/Flutter FFI wrapper around the [vtzero](https://github.com/mapbox/vtzero)
 - **Full Tile Access**: Iterate through layers, features, properties, and geometry
 - **GeoJSON Support**: Convert features to GeoJSON coordinates with proper Web Mercator projection
 
+## Performance
+
+Benchmark results comparing `vtzero_dart` with the `vector_tile` package:
+
+### Test 1: VersaTiles Bathymetry Dataset (10,000 tiles, zoom 10)
+- **Decoding:** vtzero_dart is **2.40x faster** (3μs vs 7μs mean)
+- **GeoJSON Conversion:** vtzero_dart is **2.24x faster** (18μs vs 41μs mean)
+
+### Test 2: MapTiler Detailed Terrain Tiles (~200 tiles)
+- **Decoding:** vector_tile is **24.09x faster** (397μs vs 9.56ms mean)
+- **GeoJSON Conversion:** vtzero_dart is **1.59x faster** (854μs vs 1.35ms mean)
+
+**Summary:** vtzero_dart consistently outperforms vector_tile for GeoJSON conversion across different tile types. Decoding performance varies by tile complexity - vtzero_dart excels with smaller/simpler tiles, while vector_tile may be faster for very large/complex tiles.
+
+*Test environment: MacBook Air M3, 8 cores, 24 GB RAM, macOS 15.6.1*
+
+For detailed benchmark results and methodology, see [performance_test/README.md](performance_test/README.md).
+
 ## Installation
 
-Add this to your package's `pubspec.yaml` file:
-
-```yaml
-dependencies:
-  vtzero_dart: ^0.0.14
-```
-
-Then run:
+Run:
 
 ```bash
-flutter pub get
+flutter pub add vtzero_dart
 ```
 
 **Note:** This package includes pre-built native binaries for supported platforms. No additional build steps are required when installing from pub.dev. The native libraries are automatically loaded based on your platform and architecture.
@@ -253,58 +264,6 @@ dart scripts/build_native.dart --platform android
 dart scripts/build_native.dart --platform linux --platform windows
 # or
 dart scripts/build_native.dart -p macos -p ios -p android
-```
-
-**Platform-Specific Notes:**
-
-**iOS:**
-- Can only be built on macOS (requires Xcode)
-- Builds for both `arm64` (device) and `x86_64` (simulator) architectures
-- Uses CMake with iOS toolchain configuration
-
-**Android:**
-- Can be built on macOS, Linux, or Windows
-- Requires Android NDK (set `ANDROID_NDK_HOME` environment variable)
-- Builds for: `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`
-- Minimum API level: 24 (Android 7.0+)
-
-**Cross-Compilation:**
-- macOS can build for: macOS, iOS
-- Linux can build for: Linux (and Android if NDK is available)
-- Windows can build for: Windows (and Android if NDK is available)
-- On macOS with Apple Silicon, you can build for both `arm64` and `x86_64` architectures
-- For true multi-platform builds, use CI/CD pipelines with multiple runners
-
-This will:
-1. Detect your platform and architecture (macOS, Linux, Windows, etc.)
-2. Build the native library using CMake
-3. Place the built library in `lib/native/{platform}/{architecture}/`
-
-**Note:** Android and iOS libraries are automatically built by Flutter's plugin system (`ffiPlugin: true`). The build script is primarily for desktop platforms or when you need to distribute pre-built binaries.
-
-**Supported Platforms:**
-- macOS (arm64, x86_64)
-- Linux (x86_64, arm64, arm)
-- Windows (x64)
-- Android (arm64-v8a, armeabi-v7a, x86, x86_64)
-- iOS (arm64, x86_64 for simulator)
-
-**Note:** This package does not require the native-assets experiment. Android and iOS libraries are built automatically by Flutter's plugin system. Desktop platforms can use pre-built binaries placed in `lib/native/` or build from source.
-
-### Build Native Code (Legacy/Development)
-
-For development and testing, you can also build using Flutter's build system:
-
-#### iOS
-```bash
-cd example
-flutter build ios
-```
-
-#### Android
-```bash
-cd example
-flutter build apk
 ```
 
 ## Example App
