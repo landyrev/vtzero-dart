@@ -19,19 +19,44 @@ A Dart/Flutter FFI wrapper around the [vtzero](https://github.com/mapbox/vtzero)
 
 ## Performance
 
-Benchmark results comparing `vtzero_dart` with the `vector_tile` package:
+Benchmark results comparing three implementations:
+1. **bare vtzero_dart** - Direct native API (VtzTile)
+2. **adapter vtzero_dart** - vector_tile compatibility layer (VectorTileVtzero)
+3. **vector_tile** - Pure Dart implementation
 
-### Test 1: VersaTiles Bathymetry Dataset (10,000 tiles, zoom 10)
-- **Decoding:** vtzero_dart is **2.40x faster** (3μs vs 7μs mean)
-- **GeoJSON Conversion:** vtzero_dart is **2.24x faster** (18μs vs 41μs mean)
+### Test Environment
 
-### Test 2: MapTiler Detailed Terrain Tiles (~200 tiles)
-- **Decoding:** vector_tile is **24.09x faster** (397μs vs 9.56ms mean)
-- **GeoJSON Conversion:** vtzero_dart is **1.59x faster** (854μs vs 1.35ms mean)
+- **Model:** MacBook Air (Mac15,12)
+- **Processor:** Apple M3 (8 cores: 4 performance + 4 efficiency)
+- **Memory:** 24 GB
+- **OS:** macOS 15.6.1
+- **Test Dataset:** 130 MapTiler Detailed terrain tiles (various zoom levels)
 
-**Summary:** vtzero_dart consistently outperforms vector_tile for GeoJSON conversion across different tile types. Decoding performance varies by tile complexity - vtzero_dart is faster with smaller/simpler tiles (bathymetry dataset), while vector_tile shows better decoding performance with larger/complex terrain tiles.
+### Benchmark Results
 
-*Test environment: MacBook Air M3, 8 cores, 24 GB RAM, macOS 15.6.1*
+#### Decoding Performance
+- **bare vtzero_dart:** 7μs (mean) - **55.80x faster** than vector_tile
+- **adapter vtzero_dart:** 8.21ms (mean) - 20.69x slower than vector_tile
+- **vector_tile:** 397μs (mean)
+
+The bare implementation provides the fastest decoding by directly creating native handles without building compatibility structures. The adapter is slower because it builds the full compatibility layer during decoding.
+
+#### End-to-End Performance
+(Decode + iterate all layers/features + access properties + convert to GeoJSON)
+
+- **bare vtzero_dart:** 1.17ms (mean) - **1.41x faster** than vector_tile
+- **adapter vtzero_dart:** 8.84ms (mean) - 5.37x slower than vector_tile
+- **vector_tile:** 1.65ms (mean)
+
+The bare implementation is fastest end-to-end because it avoids the overhead of building compatibility structures. It directly accesses native structures and uses native-optimized GeoJSON conversion.
+
+### Summary
+
+- **For maximum performance:** Use bare vtzero_dart - fastest decoding (55x faster) and fastest end-to-end (1.4x faster)
+- **For vector_tile compatibility:** Use adapter vtzero_dart - maintains API compatibility while still benefiting from native GeoJSON conversion
+- **For pure Dart solution:** Use vector_tile - good performance with no native dependencies
+
+The bare implementation is ideal when you need maximum performance and can work with the native API. The adapter provides vector_tile compatibility but incurs overhead from building compatibility structures during decoding.
 
 For detailed benchmark results and methodology, see [performance_test/README.md](performance_test/README.md).
 
