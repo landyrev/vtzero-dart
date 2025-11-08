@@ -29,7 +29,7 @@ Benchmark results comparing `vtzero_dart` with the `vector_tile` package:
 - **Decoding:** vector_tile is **24.09x faster** (397μs vs 9.56ms mean)
 - **GeoJSON Conversion:** vtzero_dart is **1.59x faster** (854μs vs 1.35ms mean)
 
-**Summary:** vtzero_dart consistently outperforms vector_tile for GeoJSON conversion across different tile types. Decoding performance varies by tile complexity - vtzero_dart excels with smaller/simpler tiles, while vector_tile may be faster for very large/complex tiles.
+**Summary:** vtzero_dart consistently outperforms vector_tile for GeoJSON conversion across different tile types. Decoding performance varies by tile complexity - vtzero_dart is faster with smaller/simpler tiles (bathymetry dataset), while vector_tile shows better decoding performance with larger/complex terrain tiles.
 
 *Test environment: MacBook Air M3, 8 cores, 24 GB RAM, macOS 15.6.1*
 
