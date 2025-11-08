@@ -34,3 +34,6 @@ migrate_working_dir/
 *.so
 *.dylib
 *.dll
+
+# Performance test tiles
+performance_test/tiles/
